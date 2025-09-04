@@ -18,6 +18,7 @@ import {
   Bell
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { CommandPalette } from '@/components/command-palette'
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
@@ -125,6 +126,9 @@ export function AppShell({ children }: AppShellProps) {
             </div>
           </div>
         </div>
+
+        {/* Command Palette */}
+        <CommandPalette />
 
         {/* Page content */}
         <main className="flex-1 relative overflow-y-auto focus:outline-none">
