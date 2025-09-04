@@ -15,12 +15,16 @@ import {
   Settings,
   Plus,
   Search,
-  Bell
+  Bell,
+  User,
+  Shield
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { CommandPalette } from '@/components/command-palette'
 import { GlobalSearch } from '@/components/global-search'
 import { useGlobalSearch } from '@/hooks/use-global-search'
+import { UserMenu } from '@/components/auth/user-menu'
+import { useAuth, useUserPermissions } from '@/lib/auth-context'
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
@@ -30,6 +34,7 @@ const navigation = [
   { name: 'Calendar', href: '/calendar', icon: Calendar },
   { name: 'Payments', href: '/payments', icon: CreditCard },
   { name: 'Reports', href: '/reports', icon: BarChart3 },
+  { name: 'Profile', href: '/profile', icon: User },
   { name: 'Settings', href: '/settings', icon: Settings },
 ]
 
@@ -40,6 +45,7 @@ interface AppShellProps {
 export function AppShell({ children }: AppShellProps) {
   const pathname = usePathname()
   const globalSearch = useGlobalSearch()
+  const { canAccessAdminFeatures } = useUserPermissions()
 
   // Global keyboard shortcuts
   useEffect(() => {
@@ -96,6 +102,28 @@ export function AppShell({ children }: AppShellProps) {
                   </Link>
                 )
               })}
+              
+              {/* Admin Panel Link - Only show for admin users */}
+              {canAccessAdminFeatures() && (
+                <Link
+                  href="/admin"
+                  className={cn(
+                    pathname === '/admin'
+                      ? 'bg-gray-900 text-white'
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900',
+                    'group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors'
+                  )}
+                >
+                  <Shield
+                    className={cn(
+                      pathname === '/admin' ? 'text-gray-300' : 'text-gray-400 group-hover:text-gray-500',
+                      'mr-3 flex-shrink-0 h-5 w-5'
+                    )}
+                    aria-hidden="true"
+                  />
+                  Admin Panel
+                </Link>
+              )}
             </nav>
           </div>
         </div>
@@ -130,11 +158,9 @@ export function AppShell({ children }: AppShellProps) {
                 <Bell className="h-5 w-5" />
               </Button>
 
-              {/* User menu placeholder */}
+              {/* User menu */}
               <div className="ml-3 relative">
-                <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
-                  <span className="text-xs font-medium text-gray-700">U</span>
-                </div>
+                <UserMenu />
               </div>
             </div>
           </div>

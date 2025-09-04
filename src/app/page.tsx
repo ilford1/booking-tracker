@@ -2,6 +2,7 @@ import { AppShell } from '@/components/app-shell'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { getDashboardKPIs, getRecentActivity } from '@/lib/actions/dashboard'
+import { ProtectedRoute } from '@/components/auth/protected-route'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
 import { CampaignDialog } from '@/components/dialogs/campaign-dialog'
 import { CreatorDialog } from '@/components/dialogs/creator-dialog'
@@ -20,7 +21,7 @@ import {
   Download
 } from 'lucide-react'
 
-export default async function Dashboard() {
+async function DashboardContent() {
   const kpis = await getDashboardKPIs()
   const recentActivity = await getRecentActivity()
 
@@ -163,5 +164,13 @@ export default async function Dashboard() {
         </div>
       </div>
     </AppShell>
+  )
+}
+
+export default function Dashboard() {
+  return (
+    <ProtectedRoute requiredRoles={['customer', 'service_provider', 'business_admin', 'super_admin']}>
+      <DashboardContent />
+    </ProtectedRoute>
   )
 }
