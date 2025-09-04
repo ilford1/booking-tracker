@@ -76,7 +76,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     const profile = await fetchUserProfile(authUser.id)
-    setUser({ ...authUser, profile })
+    setUser({ ...authUser, profile: profile || undefined })
   }
 
   // Initialize auth state
