@@ -15,7 +15,7 @@ export async function getPayments(): Promise<Payment[]> {
         creator:creators(*)
       )
     `)
-    .order('due_date', { ascending: true, nullsLast: true })
+    .order('due_date', { ascending: true, nullsFirst: false })
 
   if (error) {
     console.error('Error fetching payments:', error)
@@ -183,7 +183,7 @@ export async function getPaymentsByStatus(status: PaymentStatus): Promise<Paymen
       )
     `)
     .eq('status', status)
-    .order('due_date', { ascending: true, nullsLast: true })
+    .order('due_date', { ascending: true, nullsFirst: false })
 
   if (error) {
     console.error('Error fetching payments by status:', error)

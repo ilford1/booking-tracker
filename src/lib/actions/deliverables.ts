@@ -15,7 +15,7 @@ export async function getDeliverables(): Promise<Deliverable[]> {
         creator:creators(*)
       )
     `)
-    .order('due_date', { ascending: true, nullsLast: true })
+    .order('due_date', { ascending: true, nullsFirst: false })
 
   if (error) {
     console.error('Error fetching deliverables:', error)
@@ -158,7 +158,7 @@ export async function getDeliverablesByBooking(bookingId: string): Promise<Deliv
       )
     `)
     .eq('booking_id', bookingId)
-    .order('due_date', { ascending: true, nullsLast: true })
+    .order('due_date', { ascending: true, nullsFirst: false })
 
   if (error) {
     console.error('Error fetching deliverables by booking:', error)
@@ -180,7 +180,7 @@ export async function getDeliverablesByStatus(status: DeliverableStatus): Promis
       )
     `)
     .eq('status', status)
-    .order('due_date', { ascending: true, nullsLast: true })
+    .order('due_date', { ascending: true, nullsFirst: false })
 
   if (error) {
     console.error('Error fetching deliverables by status:', error)

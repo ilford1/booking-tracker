@@ -1,10 +1,13 @@
+'use client'
+
+import { useState, useEffect } from 'react'
 import { AppShell } from '@/components/app-shell'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { getBookings } from '@/lib/actions/bookings'
 import { formatCurrency, formatDate } from '@/lib/utils'
-import { BOOKING_STATUSES, STATUS_COLORS } from '@/types'
+import { BOOKING_STATUSES, STATUS_COLORS, type Booking } from '@/types'
 import { 
   Plus, 
   Search, 
@@ -16,8 +19,39 @@ import {
   DollarSign
 } from 'lucide-react'
 
-export default async function BookingsPage() {
-  const bookings = await getBookings()
+export default function BookingsPage() {
+  const [bookings, setBookings] = useState<Booking[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const bookingsData = await getBookings()
+        setBookings(bookingsData)
+      } catch (error) {
+        console.error('Error fetching bookings:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    
+    fetchData()
+  }, [])
+
+  if (loading) {
+    return (
+      <AppShell>
+        <div className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+              <p className="mt-2 text-sm text-gray-600">Loading bookings...</p>
+            </div>
+          </div>
+        </div>
+      </AppShell>
+    )
+  }
 
   // Group bookings by status for Kanban view
   const kanbanColumns = BOOKING_STATUSES.map(status => ({
