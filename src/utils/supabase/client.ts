@@ -1,7 +1,8 @@
 import { createBrowserClient } from '@supabase/ssr'
 
 // Custom fetch with better error handling and timeout
-const customFetch = async (url: string, options: RequestInit = {}) => {
+const customFetch = async (input: RequestInfo | URL, options: RequestInit = {}): Promise<Response> => {
+  const url = typeof input === 'string' ? input : input.toString()
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
   
