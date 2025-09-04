@@ -44,7 +44,7 @@ export function AppShell({ children }: AppShellProps) {
   // Global keyboard shortcuts
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
-      if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
+      if (e.key === 'f' && (e.metaKey || e.ctrlKey)) {
         e.preventDefault()
         globalSearch.open()
       }
@@ -110,12 +110,12 @@ export function AppShell({ children }: AppShellProps) {
             <div className="flex-1 flex">
               <div className="w-full flex md:ml-0">
                 <div className="relative w-full max-w-lg">
-                  <div className="absolute inset-y-0 left-0 flex items-center pointer-events-none">
-                    <Search className="h-5 w-5 text-gray-400" />
+                  <div className="absolute inset-y-0 left-0 flex items-center pointer-events-none pl-3">
+                    <Search className="h-4 w-4 text-gray-400" />
                   </div>
                   <input
                     className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-gray-900 focus:border-gray-900 sm:text-sm cursor-pointer"
-                    placeholder="Search creators, campaigns... (⌘K)"
+                    placeholder="Search creators, campaigns..."
                     type="search"
                     readOnly
                     onClick={globalSearch.open}

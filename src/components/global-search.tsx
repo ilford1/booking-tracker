@@ -211,7 +211,7 @@ export function GlobalSearch({ open, onClose }: GlobalSearchProps) {
             </div>
             <div className="flex items-center gap-1">
               <kbd className="px-1.5 py-0.5 bg-white border rounded">⌘</kbd>
-              <kbd className="px-1.5 py-0.5 bg-white border rounded">K</kbd>
+              <kbd className="px-1.5 py-0.5 bg-white border rounded">F</kbd>
               <span>to open</span>
             </div>
           </div>

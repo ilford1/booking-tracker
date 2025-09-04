@@ -122,17 +122,18 @@ export function CommandPalette({ onOpenChange }: CommandPaletteProps) {
   const [open, setOpen] = useState(false)
   const router = useRouter()
 
-  useEffect(() => {
-    const down = (e: KeyboardEvent) => {
-      if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault()
-        setOpen((open) => !open)
-      }
-    }
+  // Keyboard shortcut disabled - using global search instead
+  // useEffect(() => {
+  //   const down = (e: KeyboardEvent) => {
+  //     if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
+  //       e.preventDefault()
+  //       setOpen((open) => !open)
+  //     }
+  //   }
 
-    document.addEventListener('keydown', down)
-    return () => document.removeEventListener('keydown', down)
-  }, [])
+  //   document.addEventListener('keydown', down)
+  //   return () => document.removeEventListener('keydown', down)
+  // }, [])
 
   useEffect(() => {
     onOpenChange?.(open)
