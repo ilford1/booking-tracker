@@ -51,17 +51,17 @@ function getResultIcon(result: SearchResult) {
 function getTypeColor(type: string) {
   switch (type) {
     case 'navigation':
-      return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+      return 'bg-blue-100 text-blue-800'
     case 'action':
-      return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+      return 'bg-green-100 text-green-800'
     case 'creator':
-      return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
+      return 'bg-purple-100 text-purple-800'
     case 'campaign':
-      return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
+      return 'bg-orange-100 text-orange-800'
     case 'booking':
-      return 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200'
+      return 'bg-pink-100 text-pink-800'
     default:
-      return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
+      return 'bg-gray-100 text-gray-800'
   }
 }
 
@@ -160,7 +160,7 @@ export function GlobalSearch({ open, onClose }: GlobalSearchProps) {
                     <div
                       key={result.id}
                       className={cn(
-                        "flex items-center gap-3 px-6 py-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors",
+                        "flex items-center gap-3 px-6 py-3 cursor-pointer hover:bg-gray-50 transition-colors",
                         "border-l-2 border-transparent hover:border-l-blue-500"
                       )}
                       onClick={() => {
@@ -184,7 +184,7 @@ export function GlobalSearch({ open, onClose }: GlobalSearchProps) {
                             {getTypeLabel(result.type)}
                           </Badge>
                         </div>
-                        <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
+                        <p className="text-xs text-gray-600 truncate">
                           {result.description}
                         </p>
                       </div>
@@ -197,21 +197,21 @@ export function GlobalSearch({ open, onClose }: GlobalSearchProps) {
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-3 border-t bg-gray-50 dark:bg-gray-800/50">
-          <div className="flex items-center justify-between text-xs text-gray-600 dark:text-gray-400">
+        <div className="px-6 py-3 border-t bg-gray-50">
+          <div className="flex items-center justify-between text-xs text-gray-600">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-1">
-                <kbd className="px-1.5 py-0.5 bg-white dark:bg-gray-800 border rounded">↵</kbd>
+                <kbd className="px-1.5 py-0.5 bg-white border rounded">↵</kbd>
                 <span>to select</span>
               </div>
               <div className="flex items-center gap-1">
-                <kbd className="px-1.5 py-0.5 bg-white dark:bg-gray-800 border rounded">Esc</kbd>
+                <kbd className="px-1.5 py-0.5 bg-white border rounded">Esc</kbd>
                 <span>to close</span>
               </div>
             </div>
             <div className="flex items-center gap-1">
-              <kbd className="px-1.5 py-0.5 bg-white dark:bg-gray-800 border rounded">⌘</kbd>
-              <kbd className="px-1.5 py-0.5 bg-white dark:bg-gray-800 border rounded">K</kbd>
+              <kbd className="px-1.5 py-0.5 bg-white border rounded">⌘</kbd>
+              <kbd className="px-1.5 py-0.5 bg-white border rounded">K</kbd>
               <span>to open</span>
             </div>
           </div>

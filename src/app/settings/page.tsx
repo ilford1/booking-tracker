@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react'
 import { AppShell } from '@/components/app-shell'
 import { toast } from 'sonner'
-import { useTheme } from 'next-themes'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -30,7 +29,6 @@ import {
 } from 'lucide-react'
 
 export default function SettingsPage() {
-  const { theme, setTheme } = useTheme()
   const [settings, setSettings] = useState({
     profile: {
       name: 'John Doe',
@@ -48,7 +46,6 @@ export default function SettingsPage() {
       marketingEmails: false,
     },
     appearance: {
-      theme: theme || 'system',
       compactMode: false,
       sidebarCollapsed: false,
     },
@@ -80,12 +77,6 @@ export default function SettingsPage() {
   }, [])
 
   const updateSetting = (category: string, key: string, value: any) => {
-    // Handle theme changes immediately
-    if (category === 'appearance' && key === 'theme') {
-      setTheme(value)
-      toast.success(`Theme changed to ${value === 'system' ? 'system default' : value} mode`)
-    }
-    
     setSettings(prev => ({
       ...prev,
       [category]: {
@@ -293,28 +284,8 @@ export default function SettingsPage() {
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label htmlFor="theme">Theme</Label>
-                  <p className="text-sm text-gray-500">Choose your preferred theme</p>
-                </div>
-                <Select 
-                  value={theme || 'system'}
-                  onValueChange={(value) => updateSetting('appearance', 'theme', value)}
-                >
-                  <SelectTrigger className="w-32">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="light">Light</SelectItem>
-                    <SelectItem value="dark">Dark</SelectItem>
-                    <SelectItem value="system">System</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
                   <Label htmlFor="compact-mode">Compact Mode</Label>
-                  <p className="text-sm text-gray-500">Use more dense layout</p>
+                  <p className="text-sm text-gray-500">Use more dense layout for tables and cards</p>
                 </div>
                 <Switch
                   id="compact-mode"

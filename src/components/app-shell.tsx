@@ -19,7 +19,6 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { CommandPalette } from '@/components/command-palette'
-import { ThemeToggle } from '@/components/theme-toggle'
 import { GlobalSearch } from '@/components/global-search'
 import { useGlobalSearch } from '@/hooks/use-global-search'
 
@@ -115,7 +114,7 @@ export function AppShell({ children }: AppShellProps) {
                     <Search className="h-5 w-5 text-gray-400" />
                   </div>
                   <input
-                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white dark:bg-gray-800 dark:border-gray-600 placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-gray-900 focus:border-gray-900 sm:text-sm cursor-pointer"
+                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-gray-900 focus:border-gray-900 sm:text-sm cursor-pointer"
                     placeholder="Search creators, campaigns... (⌘K)"
                     type="search"
                     readOnly
@@ -135,8 +134,6 @@ export function AppShell({ children }: AppShellProps) {
               <Button variant="ghost" size="icon">
                 <Bell className="h-5 w-5" />
               </Button>
-              
-              <ThemeToggle />
 
               {/* User menu placeholder */}
               <div className="ml-3 relative">
