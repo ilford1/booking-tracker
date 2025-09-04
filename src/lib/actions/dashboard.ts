@@ -1,13 +1,15 @@
 'use server'
 
-import { supabaseAdmin } from '@/lib/supabase'
+import { createAdminClient } from '@/utils/supabase/server'
 import type { DashboardKPIs, FunnelData } from '@/types'
 
 export async function getDashboardKPIs(): Promise<DashboardKPIs> {
   try {
+    const supabase = await createAdminClient()
+    
     // Get active campaigns count
     const today = new Date().toISOString().split('T')[0]
-    const { data: activeCampaigns, error: campaignError } = await supabaseAdmin
+    const { data: activeCampaigns, error: campaignError } = await supabase
       .from('campaigns')
       .select('id')
       .or(`end_date.is.null,end_date.gte.${today}`)
@@ -16,7 +18,7 @@ export async function getDashboardKPIs(): Promise<DashboardKPIs> {
 
     // Get booked posts this week
     const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
-    const { data: weeklyBookings, error: weeklyError } = await supabaseAdmin
+    const { data: weeklyBookings, error: weeklyError } = await supabase
       .from('bookings')
       .select('id')
       .in('status', ['booked', 'content_due', 'submitted', 'approved', 'posted'])
@@ -25,7 +27,7 @@ export async function getDashboardKPIs(): Promise<DashboardKPIs> {
     if (weeklyError) throw weeklyError
 
     // Get budget used (paid payments)
-    const { data: paidPayments, error: paymentError } = await supabaseAdmin
+    const { data: paidPayments, error: paymentError } = await supabase
       .from('payments')
       .select('amount')
       .eq('status', 'paid')
@@ -35,7 +37,7 @@ export async function getDashboardKPIs(): Promise<DashboardKPIs> {
     const budgetUsed = paidPayments?.reduce((sum, payment) => sum + (payment.amount || 0), 0) || 0
 
     // Get total budget from campaigns
-    const { data: campaignBudgets, error: budgetError } = await supabaseAdmin
+    const { data: campaignBudgets, error: budgetError } = await supabase
       .from('campaigns')
       .select('budget')
 
@@ -44,7 +46,7 @@ export async function getDashboardKPIs(): Promise<DashboardKPIs> {
     const totalBudget = campaignBudgets?.reduce((sum, campaign) => sum + (campaign.budget || 0), 0) || 0
 
     // Get pending deliverables
-    const { data: pendingDeliverables, error: deliverableError } = await supabaseAdmin
+    const { data: pendingDeliverables, error: deliverableError } = await supabase
       .from('deliverables')
       .select('id')
       .not('status', 'in', '(posted,approved)')
@@ -52,7 +54,7 @@ export async function getDashboardKPIs(): Promise<DashboardKPIs> {
     if (deliverableError) throw deliverableError
 
     // Get overdue tasks
-    const { data: overdueTasks, error: overdueError } = await supabaseAdmin
+    const { data: overdueTasks, error: overdueError } = await supabase
       .from('deliverables')
       .select('id')
       .lt('due_date', today)
@@ -84,7 +86,8 @@ export async function getDashboardKPIs(): Promise<DashboardKPIs> {
 
 export async function getBookingStatusFunnel(): Promise<FunnelData[]> {
   try {
-    const { data, error } = await supabaseAdmin
+    const supabase = await createAdminClient()
+    const { data, error } = await supabase
       .from('bookings')
       .select('status')
 
@@ -112,8 +115,10 @@ export async function getBookingStatusFunnel(): Promise<FunnelData[]> {
 
 export async function getRecentActivity(): Promise<any[]> {
   try {
+    const supabase = await createAdminClient()
+    
     // Get recent bookings
-    const { data: recentBookings, error: bookingError } = await supabaseAdmin
+    const { data: recentBookings, error: bookingError } = await supabase
       .from('bookings')
       .select(`
         id,
@@ -129,7 +134,7 @@ export async function getRecentActivity(): Promise<any[]> {
     if (bookingError) throw bookingError
 
     // Get recent payments
-    const { data: recentPayments, error: paymentError } = await supabaseAdmin
+    const { data: recentPayments, error: paymentError } = await supabase
       .from('payments')
       .select(`
         id,
@@ -147,7 +152,7 @@ export async function getRecentActivity(): Promise<any[]> {
     if (paymentError) throw paymentError
 
     // Get recent deliverables
-    const { data: recentDeliverables, error: deliverableError } = await supabaseAdmin
+    const { data: recentDeliverables, error: deliverableError } = await supabase
       .from('deliverables')
       .select(`
         id,

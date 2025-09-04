@@ -1,11 +1,12 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { supabaseAdmin } from '@/lib/supabase'
+import { createAdminClient } from '@/utils/supabase/server'
 import type { Deliverable, CreateDeliverableData, UpdateDeliverableData, DeliverableStatus } from '@/types'
 
 export async function getDeliverables(): Promise<Deliverable[]> {
-  const { data, error } = await supabaseAdmin
+  const supabase = await createAdminClient()
+  const { data, error } = await supabase
     .from('deliverables')
     .select(`
       *,
@@ -26,7 +27,8 @@ export async function getDeliverables(): Promise<Deliverable[]> {
 }
 
 export async function getDeliverable(id: string): Promise<Deliverable | null> {
-  const { data, error } = await supabaseAdmin
+  const supabase = await createAdminClient()
+  const { data, error } = await supabase
     .from('deliverables')
     .select(`
       *,
@@ -48,7 +50,8 @@ export async function getDeliverable(id: string): Promise<Deliverable | null> {
 }
 
 export async function createDeliverable(deliverableData: CreateDeliverableData) {
-  const { data, error } = await supabaseAdmin
+  const supabase = await createAdminClient()
+  const { data, error } = await supabase
     .from('deliverables')
     .insert({
       ...deliverableData,
@@ -75,7 +78,8 @@ export async function createDeliverable(deliverableData: CreateDeliverableData) 
 }
 
 export async function updateDeliverable(id: string, deliverableData: UpdateDeliverableData) {
-  const { data, error } = await supabaseAdmin
+  const supabase = await createAdminClient()
+  const { data, error } = await supabase
     .from('deliverables')
     .update({
       ...deliverableData,
@@ -104,7 +108,8 @@ export async function updateDeliverable(id: string, deliverableData: UpdateDeliv
 }
 
 export async function updateDeliverableStatus(id: string, status: DeliverableStatus) {
-  const { data, error } = await supabaseAdmin
+  const supabase = await createAdminClient()
+  const { data, error } = await supabase
     .from('deliverables')
     .update({
       status,
@@ -132,7 +137,8 @@ export async function updateDeliverableStatus(id: string, status: DeliverableSta
 }
 
 export async function deleteDeliverable(id: string) {
-  const { error } = await supabaseAdmin
+  const supabase = await createAdminClient()
+  const { error } = await supabase
     .from('deliverables')
     .delete()
     .eq('id', id)
@@ -147,7 +153,8 @@ export async function deleteDeliverable(id: string) {
 }
 
 export async function getDeliverablesByBooking(bookingId: string): Promise<Deliverable[]> {
-  const { data, error } = await supabaseAdmin
+  const supabase = await createAdminClient()
+  const { data, error } = await supabase
     .from('deliverables')
     .select(`
       *,
@@ -169,7 +176,8 @@ export async function getDeliverablesByBooking(bookingId: string): Promise<Deliv
 }
 
 export async function getDeliverablesByStatus(status: DeliverableStatus): Promise<Deliverable[]> {
-  const { data, error } = await supabaseAdmin
+  const supabase = await createAdminClient()
+  const { data, error } = await supabase
     .from('deliverables')
     .select(`
       *,
@@ -193,7 +201,8 @@ export async function getDeliverablesByStatus(status: DeliverableStatus): Promis
 export async function getOverdueDeliverables(): Promise<Deliverable[]> {
   const today = new Date().toISOString().split('T')[0]
   
-  const { data, error } = await supabaseAdmin
+  const supabase = await createAdminClient()
+  const { data, error } = await supabase
     .from('deliverables')
     .select(`
       *,
@@ -219,7 +228,8 @@ export async function getUpcomingDeliverables(days: number = 7): Promise<Deliver
   const today = new Date()
   const futureDate = new Date(today.getTime() + (days * 24 * 60 * 60 * 1000))
   
-  const { data, error } = await supabaseAdmin
+  const supabase = await createAdminClient()
+  const { data, error } = await supabase
     .from('deliverables')
     .select(`
       *,

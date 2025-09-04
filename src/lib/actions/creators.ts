@@ -1,11 +1,12 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { supabaseAdmin } from '@/lib/supabase'
+import { createAdminClient } from '@/utils/supabase/server'
 import type { Creator, CreateCreatorData, UpdateCreatorData } from '@/types'
 
 export async function getCreators(): Promise<Creator[]> {
-  const { data, error } = await supabaseAdmin
+  const supabase = await createAdminClient()
+  const { data, error } = await supabase
     .from('creators')
     .select('*')
     .order('created_at', { ascending: false })
@@ -19,7 +20,8 @@ export async function getCreators(): Promise<Creator[]> {
 }
 
 export async function getCreator(id: string): Promise<Creator | null> {
-  const { data, error } = await supabaseAdmin
+  const supabase = await createAdminClient()
+  const { data, error } = await supabase
     .from('creators')
     .select('*')
     .eq('id', id)
@@ -34,7 +36,8 @@ export async function getCreator(id: string): Promise<Creator | null> {
 }
 
 export async function createCreator(creatorData: CreateCreatorData) {
-  const { data, error } = await supabaseAdmin
+  const supabase = await createAdminClient()
+  const { data, error } = await supabase
     .from('creators')
     .insert({
       ...creatorData,
@@ -53,7 +56,8 @@ export async function createCreator(creatorData: CreateCreatorData) {
 }
 
 export async function updateCreator(id: string, creatorData: UpdateCreatorData) {
-  const { data, error } = await supabaseAdmin
+  const supabase = await createAdminClient()
+  const { data, error } = await supabase
     .from('creators')
     .update({
       ...creatorData,
@@ -74,7 +78,8 @@ export async function updateCreator(id: string, creatorData: UpdateCreatorData) 
 }
 
 export async function deleteCreator(id: string) {
-  const { error } = await supabaseAdmin
+  const supabase = await createAdminClient()
+  const { error } = await supabase
     .from('creators')
     .delete()
     .eq('id', id)
@@ -88,7 +93,8 @@ export async function deleteCreator(id: string) {
 }
 
 export async function searchCreators(query: string): Promise<Creator[]> {
-  const { data, error } = await supabaseAdmin
+  const supabase = await createAdminClient()
+  const { data, error } = await supabase
     .from('creators')
     .select('*')
     .or(`name.ilike.%${query}%,handle.ilike.%${query}%,tags.cs.{${query}}`)
@@ -103,7 +109,8 @@ export async function searchCreators(query: string): Promise<Creator[]> {
 }
 
 export async function getCreatorsByTags(tags: string[]): Promise<Creator[]> {
-  const { data, error } = await supabaseAdmin
+  const supabase = await createAdminClient()
+  const { data, error } = await supabase
     .from('creators')
     .select('*')
     .overlaps('tags', tags)

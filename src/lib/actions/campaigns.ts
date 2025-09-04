@@ -1,11 +1,12 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { supabaseAdmin } from '@/lib/supabase'
+import { createAdminClient } from '@/utils/supabase/server'
 import type { Campaign, CreateCampaignData, UpdateCampaignData } from '@/types'
 
 export async function getCampaigns(): Promise<Campaign[]> {
-  const { data, error } = await supabaseAdmin
+  const supabase = await createAdminClient()
+  const { data, error } = await supabase
     .from('campaigns')
     .select('*')
     .order('created_at', { ascending: false })
@@ -19,7 +20,8 @@ export async function getCampaigns(): Promise<Campaign[]> {
 }
 
 export async function getCampaign(id: string): Promise<Campaign | null> {
-  const { data, error } = await supabaseAdmin
+  const supabase = await createAdminClient()
+  const { data, error } = await supabase
     .from('campaigns')
     .select('*')
     .eq('id', id)
@@ -34,7 +36,8 @@ export async function getCampaign(id: string): Promise<Campaign | null> {
 }
 
 export async function getCampaignBySlug(slug: string): Promise<Campaign | null> {
-  const { data, error } = await supabaseAdmin
+  const supabase = await createAdminClient()
+  const { data, error } = await supabase
     .from('campaigns')
     .select('*')
     .eq('slug', slug)
@@ -49,13 +52,15 @@ export async function getCampaignBySlug(slug: string): Promise<Campaign | null> 
 }
 
 export async function createCampaign(campaignData: CreateCampaignData) {
+  const supabase = await createAdminClient()
+  
   // Generate slug from name if not provided
   const slug = campaignData.slug || campaignData.name
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '')
 
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await supabase
     .from('campaigns')
     .insert({
       ...campaignData,
@@ -75,7 +80,8 @@ export async function createCampaign(campaignData: CreateCampaignData) {
 }
 
 export async function updateCampaign(id: string, campaignData: UpdateCampaignData) {
-  const { data, error } = await supabaseAdmin
+  const supabase = await createAdminClient()
+  const { data, error } = await supabase
     .from('campaigns')
     .update({
       ...campaignData,
@@ -96,7 +102,8 @@ export async function updateCampaign(id: string, campaignData: UpdateCampaignDat
 }
 
 export async function deleteCampaign(id: string) {
-  const { error } = await supabaseAdmin
+  const supabase = await createAdminClient()
+  const { error } = await supabase
     .from('campaigns')
     .delete()
     .eq('id', id)
@@ -110,9 +117,10 @@ export async function deleteCampaign(id: string) {
 }
 
 export async function getActiveCampaigns(): Promise<Campaign[]> {
+  const supabase = await createAdminClient()
   const today = new Date().toISOString().split('T')[0]
   
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await supabase
     .from('campaigns')
     .select('*')
     .or(`end_date.is.null,end_date.gte.${today}`)
@@ -127,7 +135,8 @@ export async function getActiveCampaigns(): Promise<Campaign[]> {
 }
 
 export async function getCampaignBudgetStatus(id: string) {
-  const { data, error } = await supabaseAdmin
+  const supabase = await createAdminClient()
+  const { data, error } = await supabase
     .rpc('get_campaign_budget_status', { campaign_id: id })
 
   if (error) {

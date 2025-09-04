@@ -1,11 +1,12 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { supabaseAdmin } from '@/lib/supabase'
+import { createAdminClient } from '@/utils/supabase/server'
 import type { Payment, CreatePaymentData, UpdatePaymentData, PaymentStatus } from '@/types'
 
 export async function getPayments(): Promise<Payment[]> {
-  const { data, error } = await supabaseAdmin
+  const supabase = await createAdminClient()
+  const { data, error } = await supabase
     .from('payments')
     .select(`
       *,
@@ -26,7 +27,8 @@ export async function getPayments(): Promise<Payment[]> {
 }
 
 export async function getPayment(id: string): Promise<Payment | null> {
-  const { data, error } = await supabaseAdmin
+  const supabase = await createAdminClient()
+  const { data, error } = await supabase
     .from('payments')
     .select(`
       *,
@@ -48,7 +50,8 @@ export async function getPayment(id: string): Promise<Payment | null> {
 }
 
 export async function createPayment(paymentData: CreatePaymentData) {
-  const { data, error } = await supabaseAdmin
+  const supabase = await createAdminClient()
+  const { data, error } = await supabase
     .from('payments')
     .insert({
       ...paymentData,
@@ -74,7 +77,8 @@ export async function createPayment(paymentData: CreatePaymentData) {
 }
 
 export async function updatePayment(id: string, paymentData: UpdatePaymentData) {
-  const { data, error } = await supabaseAdmin
+  const supabase = await createAdminClient()
+  const { data, error } = await supabase
     .from('payments')
     .update({
       ...paymentData,
@@ -112,7 +116,8 @@ export async function updatePaymentStatus(id: string, status: PaymentStatus) {
     updateData.paid_at = new Date().toISOString()
   }
 
-  const { data, error } = await supabaseAdmin
+  const supabase = await createAdminClient()
+  const { data, error } = await supabase
     .from('payments')
     .update(updateData)
     .eq('id', id)
@@ -136,7 +141,8 @@ export async function updatePaymentStatus(id: string, status: PaymentStatus) {
 }
 
 export async function deletePayment(id: string) {
-  const { error } = await supabaseAdmin
+  const supabase = await createAdminClient()
+  const { error } = await supabase
     .from('payments')
     .delete()
     .eq('id', id)
@@ -150,7 +156,8 @@ export async function deletePayment(id: string) {
 }
 
 export async function getPaymentsByBooking(bookingId: string): Promise<Payment[]> {
-  const { data, error } = await supabaseAdmin
+  const supabase = await createAdminClient()
+  const { data, error } = await supabase
     .from('payments')
     .select(`
       *,
@@ -172,7 +179,8 @@ export async function getPaymentsByBooking(bookingId: string): Promise<Payment[]
 }
 
 export async function getPaymentsByStatus(status: PaymentStatus): Promise<Payment[]> {
-  const { data, error } = await supabaseAdmin
+  const supabase = await createAdminClient()
+  const { data, error } = await supabase
     .from('payments')
     .select(`
       *,
@@ -196,7 +204,8 @@ export async function getPaymentsByStatus(status: PaymentStatus): Promise<Paymen
 export async function getOverduePayments(): Promise<Payment[]> {
   const today = new Date().toISOString().split('T')[0]
   
-  const { data, error } = await supabaseAdmin
+  const supabase = await createAdminClient()
+  const { data, error } = await supabase
     .from('payments')
     .select(`
       *,
@@ -219,7 +228,8 @@ export async function getOverduePayments(): Promise<Payment[]> {
 }
 
 export async function getTotalPaymentsByStatus(): Promise<Record<PaymentStatus, { count: number; amount: number }>> {
-  const { data, error } = await supabaseAdmin
+  const supabase = await createAdminClient()
+  const { data, error } = await supabase
     .from('payments')
     .select('status, amount')
 

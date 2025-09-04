@@ -1,11 +1,12 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { supabaseAdmin } from '@/lib/supabase'
+import { createAdminClient } from '@/utils/supabase/server'
 import type { Booking, CreateBookingData, UpdateBookingData, BookingStatus } from '@/types'
 
 export async function getBookings(): Promise<Booking[]> {
-  const { data, error } = await supabaseAdmin
+  const supabase = await createAdminClient()
+  const { data, error } = await supabase
     .from('bookings')
     .select(`
       *,
@@ -23,7 +24,8 @@ export async function getBookings(): Promise<Booking[]> {
 }
 
 export async function getBooking(id: string): Promise<Booking | null> {
-  const { data, error } = await supabaseAdmin
+  const supabase = await createAdminClient()
+  const { data, error } = await supabase
     .from('bookings')
     .select(`
       *,
@@ -42,7 +44,8 @@ export async function getBooking(id: string): Promise<Booking | null> {
 }
 
 export async function createBooking(bookingData: CreateBookingData) {
-  const { data, error } = await supabaseAdmin
+  const supabase = await createAdminClient()
+  const { data, error } = await supabase
     .from('bookings')
     .insert({
       ...bookingData,
@@ -65,7 +68,8 @@ export async function createBooking(bookingData: CreateBookingData) {
 }
 
 export async function updateBooking(id: string, bookingData: UpdateBookingData) {
-  const { data, error } = await supabaseAdmin
+  const supabase = await createAdminClient()
+  const { data, error } = await supabase
     .from('bookings')
     .update({
       ...bookingData,
@@ -90,7 +94,8 @@ export async function updateBooking(id: string, bookingData: UpdateBookingData) 
 }
 
 export async function updateBookingStatus(id: string, status: BookingStatus) {
-  const { data, error } = await supabaseAdmin
+  const supabase = await createAdminClient()
+  const { data, error } = await supabase
     .from('bookings')
     .update({
       status,
@@ -115,7 +120,8 @@ export async function updateBookingStatus(id: string, status: BookingStatus) {
 }
 
 export async function deleteBooking(id: string) {
-  const { error } = await supabaseAdmin
+  const supabase = await createAdminClient()
+  const { error } = await supabase
     .from('bookings')
     .delete()
     .eq('id', id)
@@ -129,7 +135,8 @@ export async function deleteBooking(id: string) {
 }
 
 export async function getBookingsByStatus(status: BookingStatus): Promise<Booking[]> {
-  const { data, error } = await supabaseAdmin
+  const supabase = await createAdminClient()
+  const { data, error } = await supabase
     .from('bookings')
     .select(`
       *,
@@ -148,7 +155,8 @@ export async function getBookingsByStatus(status: BookingStatus): Promise<Bookin
 }
 
 export async function getBookingsByCreator(creatorId: string): Promise<Booking[]> {
-  const { data, error } = await supabaseAdmin
+  const supabase = await createAdminClient()
+  const { data, error } = await supabase
     .from('bookings')
     .select(`
       *,
@@ -167,7 +175,8 @@ export async function getBookingsByCreator(creatorId: string): Promise<Booking[]
 }
 
 export async function getBookingsByCampaign(campaignId: string): Promise<Booking[]> {
-  const { data, error } = await supabaseAdmin
+  const supabase = await createAdminClient()
+  const { data, error } = await supabase
     .from('bookings')
     .select(`
       *,
@@ -186,7 +195,8 @@ export async function getBookingsByCampaign(campaignId: string): Promise<Booking
 }
 
 export async function getBookingStatusCounts() {
-  const { data, error } = await supabaseAdmin
+  const supabase = await createAdminClient()
+  const { data, error } = await supabase
     .from('bookings')
     .select('status')
 
