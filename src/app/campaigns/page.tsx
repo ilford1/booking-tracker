@@ -23,6 +23,7 @@ import { CampaignDialog } from '@/components/dialogs/campaign-dialog'
 import { BookingDialog } from '@/components/dialogs/booking-dialog'
 import { DetailsDialog } from '@/components/dialogs/details-dialog'
 import { SearchInput } from '@/components/search-input'
+import { CampaignsTable } from '@/components/campaigns-table'
 import { toast } from 'sonner'
 import { 
   Plus, 
@@ -33,7 +34,9 @@ import {
   Target,
   Clock,
   Download,
-  Trash2
+  Trash2,
+  Grid3X3,
+  List
 } from 'lucide-react'
 
 export default function CampaignsPage() {
@@ -44,6 +47,7 @@ export default function CampaignsPage() {
   const [refreshKey, setRefreshKey] = useState(0)
   const [searchQuery, setSearchQuery] = useState('')
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid')
 
   useEffect(() => {
     const fetchData = async () => {
@@ -176,6 +180,24 @@ export default function CampaignsPage() {
                 placeholder="Search campaigns..."
                 className="w-64"
               />
+              <div className="flex rounded-md border border-gray-200 bg-white">
+                <Button
+                  variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('grid')}
+                  className="rounded-r-none border-r"
+                >
+                  <Grid3X3 className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant={viewMode === 'table' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('table')}
+                  className="rounded-l-none"
+                >
+                  <List className="h-4 w-4" />
+                </Button>
+              </div>
               <Button variant="outline" className="gap-2" onClick={handleExport}>
                 <Download className="h-4 w-4" />
                 Export
@@ -247,7 +269,7 @@ export default function CampaignsPage() {
           </Card>
         </div>
 
-        {/* Campaigns Grid */}
+        {/* Campaigns Display */}
         {campaigns.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
@@ -271,6 +293,13 @@ export default function CampaignsPage() {
               Clear Search
             </Button>
           </div>
+        ) : viewMode === 'table' ? (
+          <CampaignsTable
+            campaigns={filteredCampaigns}
+            onDelete={handleDelete}
+            onSuccess={handleCampaignSuccess}
+            deletingId={deletingId}
+          />
         ) : (
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             {filteredCampaigns.map((campaign) => {

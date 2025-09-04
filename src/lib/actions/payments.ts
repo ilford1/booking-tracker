@@ -23,7 +23,7 @@ export async function getPayments(): Promise<Payment[]> {
     throw new Error('Failed to fetch payments')
   }
 
-  return data || []
+  return (data || []).map(processPaymentData)
 }
 
 export async function getPayment(id: string): Promise<Payment | null> {
@@ -46,7 +46,7 @@ export async function getPayment(id: string): Promise<Payment | null> {
     return null
   }
 
-  return data
+  return data ? processPaymentData(data) : null
 }
 
 export async function createPayment(paymentData: CreatePaymentData) {
@@ -54,8 +54,7 @@ export async function createPayment(paymentData: CreatePaymentData) {
   const { data, error } = await supabase
     .from('payments')
     .insert({
-      ...paymentData,
-      actor: 'system'
+      ...paymentData
     })
     .select(`
       *,
@@ -73,7 +72,7 @@ export async function createPayment(paymentData: CreatePaymentData) {
   }
 
   revalidatePath('/payments')
-  return data
+  return processPaymentData(data)
 }
 
 export async function updatePayment(id: string, paymentData: UpdatePaymentData) {
@@ -81,8 +80,7 @@ export async function updatePayment(id: string, paymentData: UpdatePaymentData) 
   const { data, error } = await supabase
     .from('payments')
     .update({
-      ...paymentData,
-      actor: 'system'
+      ...paymentData
     })
     .eq('id', id)
     .select(`
@@ -96,19 +94,58 @@ export async function updatePayment(id: string, paymentData: UpdatePaymentData) 
     .single()
 
   if (error) {
-    console.error('Error updating payment:', error)
-    throw new Error('Failed to update payment')
+    console.error('Error updating payment:', {
+      error,
+      paymentId: id,
+      paymentData
+    })
+    throw new Error(`Failed to update payment: ${error.message || 'Unknown error'}`)
   }
 
   revalidatePath('/payments')
   revalidatePath(`/payments/${id}`)
-  return data
+  return processPaymentData(data)
+}
+
+// Helper function to map new status values to database values (temporary compatibility)
+function mapStatusForDatabase(status: PaymentStatus): string {
+  const statusMap: Record<PaymentStatus, string> = {
+    'unconfirmed': 'pending',
+    'pending_invoice': 'pending', 
+    'waiting_payment': 'pending',
+    'paid': 'paid',
+    'failed': 'failed'
+  }
+  return statusMap[status] || status
+}
+
+// Helper function to map database values back to TypeScript enum values
+function mapStatusFromDatabase(dbStatus: string): PaymentStatus {
+  const reverseMap: Record<string, PaymentStatus> = {
+    'pending': 'unconfirmed',
+    'paid': 'paid',
+    'failed': 'failed',
+    'refunded': 'failed',
+    'cancelled': 'failed'
+  }
+  return reverseMap[dbStatus] as PaymentStatus || 'unconfirmed'
+}
+
+// Helper function to process payment data from database
+function processPaymentData(payment: any): Payment {
+  if (!payment) return payment
+  return {
+    ...payment,
+    status: mapStatusFromDatabase(payment.status)
+  }
 }
 
 export async function updatePaymentStatus(id: string, status: PaymentStatus) {
+  // Map the status to database-compatible value for now
+  const dbStatus = mapStatusForDatabase(status)
+  
   const updateData: any = {
-    status,
-    actor: 'system'
+    status: dbStatus
   }
 
   // Set paid_at timestamp when marking as paid
@@ -117,6 +154,24 @@ export async function updatePaymentStatus(id: string, status: PaymentStatus) {
   }
 
   const supabase = await createAdminClient()
+  
+  // First, verify the payment exists
+  const { data: existingPayment, error: fetchError } = await supabase
+    .from('payments')
+    .select('id, status')
+    .eq('id', id)
+    .single()
+  
+  if (fetchError) {
+    console.error('Error fetching payment for status update:', fetchError)
+    throw new Error(`Payment not found: ${fetchError.message}`)
+  }
+  
+  if (!existingPayment) {
+    throw new Error('Payment not found')
+  }
+  
+  // Update the payment status
   const { data, error } = await supabase
     .from('payments')
     .update(updateData)
@@ -132,12 +187,17 @@ export async function updatePaymentStatus(id: string, status: PaymentStatus) {
     .single()
 
   if (error) {
-    console.error('Error updating payment status:', error)
-    throw new Error('Failed to update payment status')
+    console.error('Error updating payment status:', {
+      error,
+      paymentId: id,
+      newStatus: status,
+      updateData
+    })
+    throw new Error(`Failed to update payment status: ${error.message || 'Unknown error'}`)
   }
 
   revalidatePath('/payments')
-  return data
+  return processPaymentData(data)
 }
 
 export async function deletePayment(id: string) {
@@ -175,11 +235,14 @@ export async function getPaymentsByBooking(bookingId: string): Promise<Payment[]
     throw new Error('Failed to fetch payments by booking')
   }
 
-  return data || []
+  return (data || []).map(processPaymentData)
 }
 
 export async function getPaymentsByStatus(status: PaymentStatus): Promise<Payment[]> {
   const supabase = await createAdminClient()
+  // Map the TypeScript status to database status for query
+  const dbStatus = mapStatusForDatabase(status)
+  
   const { data, error } = await supabase
     .from('payments')
     .select(`
@@ -190,7 +253,7 @@ export async function getPaymentsByStatus(status: PaymentStatus): Promise<Paymen
         creator:creators(*)
       )
     `)
-    .eq('status', status)
+    .eq('status', dbStatus)
     .order('due_date', { ascending: true, nullsFirst: false })
 
   if (error) {
@@ -198,7 +261,7 @@ export async function getPaymentsByStatus(status: PaymentStatus): Promise<Paymen
     throw new Error('Failed to fetch payments by status')
   }
 
-  return data || []
+  return (data || []).map(processPaymentData)
 }
 
 export async function getOverduePayments(): Promise<Payment[]> {
@@ -216,7 +279,7 @@ export async function getOverduePayments(): Promise<Payment[]> {
       )
     `)
     .lt('due_date', today)
-    .neq('status', 'paid')
+    .neq('status', 'paid') // 'paid' is the same in both database and TypeScript
     .order('due_date', { ascending: true })
 
   if (error) {
@@ -224,7 +287,7 @@ export async function getOverduePayments(): Promise<Payment[]> {
     throw new Error('Failed to fetch overdue payments')
   }
 
-  return data || []
+  return (data || []).map(processPaymentData)
 }
 
 export async function getTotalPaymentsByStatus(): Promise<Record<PaymentStatus, { count: number; amount: number }>> {
@@ -239,7 +302,8 @@ export async function getTotalPaymentsByStatus(): Promise<Record<PaymentStatus, 
   }
 
   const totals = data.reduce((acc, payment) => {
-    const status = payment.status as PaymentStatus
+    // Map database status to TypeScript status
+    const status = mapStatusFromDatabase(payment.status)
     if (!acc[status]) {
       acc[status] = { count: 0, amount: 0 }
     }

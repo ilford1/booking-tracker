@@ -24,7 +24,7 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
-import { PaymentViewDialog, PaymentEditDialog } from '@/components/dialogs/payment-dialog'
+import { PaymentViewDialog, PaymentEditDialog, PaymentCreateDialog } from '@/components/dialogs/payment-dialog'
 import { toast } from 'sonner'
 import type { Payment, PaymentStatus } from '@/types'
 import { 
@@ -232,10 +232,7 @@ export default function PaymentsPage() {
                 <Download className="h-4 w-4" />
                 Export
               </Button>
-              <Button className="gap-2">
-                <Plus className="h-4 w-4" />
-                Add Payment
-              </Button>
+              <PaymentCreateDialog onSuccess={handlePaymentUpdate} />
             </div>
           </div>
         </div>
@@ -325,10 +322,7 @@ export default function PaymentsPage() {
                     : 'No payments found.'
                   }
                 </p>
-                <Button className="gap-2">
-                  <Plus className="h-4 w-4" />
-                  Add First Payment
-                </Button>
+                <PaymentCreateDialog onSuccess={handlePaymentUpdate} />
               </div>
             </CardContent>
           </Card>

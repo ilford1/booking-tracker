@@ -21,9 +21,11 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { updatePayment, updatePaymentStatus } from '@/lib/actions/payments'
+import { createPayment, updatePayment, updatePaymentStatus } from '@/lib/actions/payments'
+import { getBookings } from '@/lib/actions/bookings'
 import { formatCurrency, formatDate } from '@/lib/utils'
-import type { Payment, PaymentStatus } from '@/types'
+import type { Payment, PaymentStatus, Booking } from '@/types'
+import { useEffect } from 'react'
 import { toast } from 'sonner'
 import { 
   Calendar,
@@ -33,7 +35,8 @@ import {
   Clock,
   CheckCircle2,
   XCircle,
-  AlertCircle
+  AlertCircle,
+  Plus
 } from 'lucide-react'
 
 interface PaymentViewDialogProps {
@@ -313,6 +316,215 @@ export function PaymentEditDialog({ payment, trigger, onUpdate }: PaymentEditDia
                 </Button>
               </div>
             </div>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+interface PaymentCreateDialogProps {
+  trigger?: React.ReactNode
+  onSuccess?: () => void
+}
+
+export function PaymentCreateDialog({ trigger, onSuccess }: PaymentCreateDialogProps) {
+  const [open, setOpen] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [bookings, setBookings] = useState<Booking[]>([])
+  const [formData, setFormData] = useState({
+    booking_id: '',
+    amount: 0,
+    status: 'unconfirmed' as PaymentStatus,
+    payment_method: '',
+    due_date: '',
+    notes: '',
+    transaction_id: ''
+  })
+
+  useEffect(() => {
+    const fetchBookings = async () => {
+      try {
+        const bookingsData = await getBookings()
+        setBookings(bookingsData)
+      } catch (error) {
+        console.error('Failed to fetch bookings:', error)
+      }
+    }
+    
+    if (open) {
+      fetchBookings()
+    }
+  }, [open])
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!formData.booking_id || !formData.amount) {
+      toast.error('Please fill in all required fields')
+      return
+    }
+
+    setLoading(true)
+    try {
+      await createPayment({
+        booking_id: formData.booking_id,
+        amount: formData.amount,
+        status: formData.status,
+        payment_method: formData.payment_method || null,
+        due_date: formData.due_date || null,
+        notes: formData.notes || null,
+        transaction_id: formData.transaction_id || null,
+        currency: 'USD'
+      })
+      toast.success('Payment created successfully')
+      onSuccess?.()
+      setOpen(false)
+      // Reset form
+      setFormData({
+        booking_id: '',
+        amount: 0,
+        status: 'unconfirmed',
+        payment_method: '',
+        due_date: '',
+        notes: '',
+        transaction_id: ''
+      })
+    } catch (error) {
+      toast.error('Failed to create payment')
+      console.error('Create error:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const defaultTrigger = (
+    <Button className="gap-2">
+      <Plus className="h-4 w-4" />
+      Add Payment
+    </Button>
+  )
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        {trigger || defaultTrigger}
+      </DialogTrigger>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Create New Payment</DialogTitle>
+          <DialogDescription>
+            Create a new payment record for a booking
+          </DialogDescription>
+        </DialogHeader>
+        
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <Label htmlFor="booking_id">Booking *</Label>
+            <Select
+              value={formData.booking_id}
+              onValueChange={(value) => setFormData({ ...formData, booking_id: value })}
+              required
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select a booking" />
+              </SelectTrigger>
+              <SelectContent>
+                {bookings.map((booking) => (
+                  <SelectItem key={booking.id} value={booking.id}>
+                    {booking.creator?.name || 'Unknown'} - {booking.campaign?.name || 'Unknown'} 
+                    ({formatCurrency(booking.agreed_amount || booking.offer_amount || 0)})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="amount">Amount *</Label>
+              <Input
+                id="amount"
+                type="number"
+                step="0.01"
+                value={formData.amount}
+                onChange={(e) => setFormData({ ...formData, amount: parseFloat(e.target.value) || 0 })}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="payment_method">Payment Method</Label>
+              <Input
+                id="payment_method"
+                value={formData.payment_method}
+                onChange={(e) => setFormData({ ...formData, payment_method: e.target.value })}
+                placeholder="e.g., Bank Transfer, PayPal"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="status">Status</Label>
+              <Select
+                value={formData.status}
+                onValueChange={(value: PaymentStatus) => setFormData({ ...formData, status: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unconfirmed">Unconfirmed</SelectItem>
+                  <SelectItem value="pending_invoice">Pending Invoice</SelectItem>
+                  <SelectItem value="waiting_payment">Waiting Payment</SelectItem>
+                  <SelectItem value="paid">Paid</SelectItem>
+                  <SelectItem value="failed">Failed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="due_date">Due Date</Label>
+              <Input
+                id="due_date"
+                type="date"
+                value={formData.due_date}
+                onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div>
+            <Label htmlFor="transaction_id">Transaction ID</Label>
+            <Input
+              id="transaction_id"
+              value={formData.transaction_id}
+              onChange={(e) => setFormData({ ...formData, transaction_id: e.target.value })}
+              placeholder="Transaction reference or ID"
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="notes">Notes</Label>
+            <Textarea
+              id="notes"
+              value={formData.notes}
+              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              placeholder="Any additional notes about this payment..."
+              rows={3}
+            />
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setOpen(false)}
+              disabled={loading}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={loading}>
+              {loading ? 'Creating...' : 'Create Payment'}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>
