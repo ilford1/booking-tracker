@@ -27,7 +27,7 @@ import { Loader2, Plus, X } from 'lucide-react'
 const creatorFormSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   email: z.string().email('Invalid email address').optional(),
-  platform: z.enum(['instagram', 'youtube', 'tiktok', 'twitter', 'linkedin', 'other']),
+  platform: z.enum(['instagram', 'youtube', 'tiktok', 'facebook', 'other']),
   handle: z.string().min(1, 'Handle is required'),
   followers_count: z.number().min(0).optional(),
   engagement_rate: z.number().min(0).max(100).optional(),
@@ -56,8 +56,7 @@ const PLATFORMS = [
   { value: 'instagram', label: 'Instagram' },
   { value: 'youtube', label: 'YouTube' },
   { value: 'tiktok', label: 'TikTok' },
-  { value: 'twitter', label: 'Twitter/X' },
-  { value: 'linkedin', label: 'LinkedIn' },
+  { value: 'facebook', label: 'Facebook' },
   { value: 'other', label: 'Other' },
 ]
 
