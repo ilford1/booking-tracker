@@ -1,0 +1,249 @@
+import { AppShell } from '@/components/app-shell'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { getCampaigns, getActiveCampaigns } from '@/lib/actions/campaigns'
+import { formatCurrency, formatDate } from '@/lib/utils'
+import { 
+  Plus, 
+  Search, 
+  Filter,
+  Calendar,
+  DollarSign,
+  Target,
+  Clock
+} from 'lucide-react'
+
+export default async function CampaignsPage() {
+  const campaigns = await getCampaigns()
+  const activeCampaigns = await getActiveCampaigns()
+
+  const getCampaignStatus = (campaign: any) => {
+    const today = new Date()
+    const startDate = campaign.start_date ? new Date(campaign.start_date) : null
+    const endDate = campaign.end_date ? new Date(campaign.end_date) : null
+
+    if (startDate && startDate > today) {
+      return { status: 'upcoming', color: 'bg-blue-100 text-blue-800' }
+    }
+    if (endDate && endDate < today) {
+      return { status: 'completed', color: 'bg-gray-100 text-gray-800' }
+    }
+    return { status: 'active', color: 'bg-green-100 text-green-800' }
+  }
+
+  return (
+    <AppShell>
+      <div className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+        {/* Page Header */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Campaigns</h1>
+              <p className="text-gray-500 mt-1">
+                Manage your marketing campaigns and track their performance
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" className="gap-2">
+                <Search className="h-4 w-4" />
+                Search
+              </Button>
+              <Button variant="outline" className="gap-2">
+                <Filter className="h-4 w-4" />
+                Filter
+              </Button>
+              <Button className="gap-2">
+                <Plus className="h-4 w-4" />
+                New Campaign
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">
+                Total Campaigns
+              </CardTitle>
+              <Target className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{campaigns.length}</div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">
+                Active Campaigns
+              </CardTitle>
+              <Clock className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{activeCampaigns.length}</div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">
+                Total Budget
+              </CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {formatCurrency(
+                  campaigns.reduce((sum, c) => sum + (c.budget || 0), 0)
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">
+                Avg Budget
+              </CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {campaigns.length > 0 
+                  ? formatCurrency(
+                      campaigns.reduce((sum, c) => sum + (c.budget || 0), 0) / campaigns.length
+                    )
+                  : formatCurrency(0)
+                }
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Campaigns Grid */}
+        {campaigns.length === 0 ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <div className="text-center">
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No campaigns yet</h3>
+                <p className="text-gray-500 mb-4">
+                  Create your first marketing campaign to start managing KOL collaborations.
+                </p>
+                <Button className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Create Your First Campaign
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            {campaigns.map((campaign) => {
+              const { status, color } = getCampaignStatus(campaign)
+              
+              return (
+                <Card key={campaign.id} className="hover:shadow-lg transition-shadow">
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <CardTitle className="text-xl">{campaign.name}</CardTitle>
+                        {campaign.objective && (
+                          <p className="text-gray-600 mt-1">{campaign.objective}</p>
+                        )}
+                      </div>
+                      <Badge className={`ml-2 capitalize ${color}`}>
+                        {status}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  
+                  <CardContent>
+                    {/* Budget */}
+                    {campaign.budget && (
+                      <div className="flex items-center gap-2 mb-4">
+                        <DollarSign className="h-4 w-4 text-gray-500" />
+                        <span className="font-medium">
+                          {formatCurrency(campaign.budget)} budget
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Timeline */}
+                    <div className="flex items-center gap-2 mb-4">
+                      <Calendar className="h-4 w-4 text-gray-500" />
+                      <span className="text-sm text-gray-600">
+                        {campaign.start_date && campaign.end_date ? (
+                          <>
+                            {formatDate(campaign.start_date)} - {formatDate(campaign.end_date)}
+                          </>
+                        ) : campaign.start_date ? (
+                          <>Starts {formatDate(campaign.start_date)}</>
+                        ) : campaign.end_date ? (
+                          <>Ends {formatDate(campaign.end_date)}</>
+                        ) : (
+                          'No timeline set'
+                        )}
+                      </span>
+                    </div>
+
+                    {/* Tags */}
+                    {campaign.tags && campaign.tags.length > 0 && (
+                      <div className="mb-4">
+                        <div className="flex flex-wrap gap-1">
+                          {campaign.tags.slice(0, 4).map((tag) => (
+                            <Badge key={tag} variant="outline" className="text-xs">
+                              {tag}
+                            </Badge>
+                          ))}
+                          {campaign.tags.length > 4 && (
+                            <Badge variant="outline" className="text-xs">
+                              +{campaign.tags.length - 4}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Brief Preview */}
+                    {campaign.default_brief && (
+                      <div className="mb-4">
+                        <div className="text-sm font-medium text-gray-900 mb-1">Brief Preview</div>
+                        <p className="text-sm text-gray-600 line-clamp-3">
+                          {campaign.default_brief.length > 150
+                            ? `${campaign.default_brief.substring(0, 150)}...`
+                            : campaign.default_brief
+                          }
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Metadata */}
+                    <div className="text-xs text-gray-500 mb-4">
+                      Created {formatDate(campaign.created_at)}
+                      {campaign.slug && (
+                        <> • Slug: {campaign.slug}</>
+                      )}
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" className="flex-1">
+                        View Details
+                      </Button>
+                      <Button size="sm" className="flex-1">
+                        Create Booking
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    </AppShell>
+  )
+}

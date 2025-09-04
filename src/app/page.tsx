@@ -1,0 +1,174 @@
+import { AppShell } from '@/components/app-shell'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { getDashboardKPIs, getRecentActivity } from '@/lib/actions/dashboard'
+import { formatCurrency, formatDateTime } from '@/lib/utils'
+import { 
+  TrendingUp, 
+  Calendar, 
+  DollarSign, 
+  Users,
+  ArrowUpRight,
+  ArrowDownRight,
+  Megaphone
+} from 'lucide-react'
+
+export default async function Dashboard() {
+  const kpis = await getDashboardKPIs()
+  const recentActivity = await getRecentActivity()
+
+  return (
+    <AppShell>
+      <div className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+        {/* Page header */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+              <p className="text-gray-500 mt-1">
+                Welcome back! Here's what's happening with your KOL campaigns.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline">Export Report</Button>
+              <Button>Create Campaign</Button>
+            </div>
+          </div>
+        </div>
+
+        {/* KPI Cards */}
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">
+                Active Campaigns
+              </CardTitle>
+              <Megaphone className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{kpis.activeCampaigns}</div>
+              <div className="flex items-center text-xs text-green-600 mt-1">
+                <ArrowUpRight className="h-3 w-3 mr-1" />
+                Active campaigns
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">
+                Posts This Week
+              </CardTitle>
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{kpis.bookedPostsThisWeek}</div>
+              <div className="flex items-center text-xs text-green-600 mt-1">
+                <ArrowUpRight className="h-3 w-3 mr-1" />
+                This week
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">
+                Budget Used
+              </CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {formatCurrency(kpis.budgetUsed)}
+              </div>
+              <div className="text-xs text-gray-500 mt-1">
+                of {formatCurrency(kpis.totalBudget)} total
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">
+                Pending Tasks
+              </CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{kpis.pendingDeliverables}</div>
+              <div className="flex items-center text-xs text-red-600 mt-1">
+                <ArrowDownRight className="h-3 w-3 mr-1" />
+                {kpis.overdueTasks} overdue
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Recent Activity & Quick Actions */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Recent Activity */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Recent Activity</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <div className="flex-1 text-sm">
+                    <span className="font-medium">@fashionista_vn</span> posted content for 
+                    <span className="font-medium"> Low-Rise Logic Drop</span>
+                  </div>
+                  <span className="text-xs text-gray-500">2h ago</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                  <div className="flex-1 text-sm">
+                    <span className="font-medium">Payment</span> of ₫3,000,000 sent to 
+                    <span className="font-medium">@beauty_influencer</span>
+                  </div>
+                  <span className="text-xs text-gray-500">4h ago</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                  <div className="flex-1 text-sm">
+                    Content submitted for review: 
+                    <span className="font-medium">Polka-Dot Swim Campaign</span>
+                  </div>
+                  <span className="text-xs text-gray-500">6h ago</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Quick Actions */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Quick Actions</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-3">
+                <Button variant="outline" className="h-auto p-4 flex flex-col gap-2">
+                  <Users className="h-5 w-5" />
+                  <span className="text-sm">Add Creator</span>
+                </Button>
+                <Button variant="outline" className="h-auto p-4 flex flex-col gap-2">
+                  <Megaphone className="h-5 w-5" />
+                  <span className="text-sm">New Campaign</span>
+                </Button>
+                <Button variant="outline" className="h-auto p-4 flex flex-col gap-2">
+                  <Calendar className="h-5 w-5" />
+                  <span className="text-sm">Schedule Post</span>
+                </Button>
+                <Button variant="outline" className="h-auto p-4 flex flex-col gap-2">
+                  <DollarSign className="h-5 w-5" />
+                  <span className="text-sm">Process Payment</span>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </AppShell>
+  )
+}
