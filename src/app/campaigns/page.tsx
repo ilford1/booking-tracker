@@ -8,6 +8,10 @@ import { Badge } from '@/components/ui/badge'
 import { getCampaigns, getActiveCampaigns } from '@/lib/actions/campaigns'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import type { Campaign } from '@/types'
+import { CampaignDialog } from '@/components/dialogs/campaign-dialog'
+import { BookingDialog } from '@/components/dialogs/booking-dialog'
+import { DetailsDialog } from '@/components/dialogs/details-dialog'
+import { SearchInput } from '@/components/search-input'
 import { 
   Plus, 
   Search, 
@@ -20,17 +24,22 @@ import {
 
 export default function CampaignsPage() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
+  const [filteredCampaigns, setFilteredCampaigns] = useState<Campaign[]>([])
   const [activeCampaigns, setActiveCampaigns] = useState<Campaign[]>([])
   const [loading, setLoading] = useState(true)
+  const [refreshKey, setRefreshKey] = useState(0)
+  const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
     const fetchData = async () => {
       try {
+        setLoading(true)
         const [campaignsData, activeCampaignsData] = await Promise.all([
           getCampaigns(),
           getActiveCampaigns()
         ])
         setCampaigns(campaignsData)
+        setFilteredCampaigns(campaignsData)
         setActiveCampaigns(activeCampaignsData)
       } catch (error) {
         console.error('Error fetching campaigns:', error)
@@ -40,7 +49,25 @@ export default function CampaignsPage() {
     }
     
     fetchData()
-  }, [])
+  }, [refreshKey])
+
+  // Filter campaigns based on search
+  useEffect(() => {
+    if (searchQuery) {
+      const filtered = campaigns.filter(campaign => 
+        campaign.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (campaign.objective && campaign.objective.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (campaign.tags && campaign.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase())))
+      )
+      setFilteredCampaigns(filtered)
+    } else {
+      setFilteredCampaigns(campaigns)
+    }
+  }, [campaigns, searchQuery])
+
+  const handleCampaignSuccess = () => {
+    setRefreshKey(prev => prev + 1)
+  }
 
   const getCampaignStatus = (campaign: any) => {
     const today = new Date()
@@ -84,18 +111,13 @@ export default function CampaignsPage() {
               </p>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" className="gap-2">
-                <Search className="h-4 w-4" />
-                Search
-              </Button>
-              <Button variant="outline" className="gap-2">
-                <Filter className="h-4 w-4" />
-                Filter
-              </Button>
-              <Button className="gap-2">
-                <Plus className="h-4 w-4" />
-                New Campaign
-              </Button>
+              <SearchInput 
+                value={searchQuery}
+                onChange={setSearchQuery}
+                placeholder="Search campaigns..."
+                className="w-64"
+              />
+              <CampaignDialog onSuccess={handleCampaignSuccess} />
             </div>
           </div>
         </div>
@@ -171,16 +193,24 @@ export default function CampaignsPage() {
                 <p className="text-gray-500 mb-4">
                   Create your first marketing campaign to start managing KOL collaborations.
                 </p>
-                <Button className="gap-2">
-                  <Plus className="h-4 w-4" />
-                  Create Your First Campaign
-                </Button>
+                <CampaignDialog onSuccess={handleCampaignSuccess} />
               </div>
             </CardContent>
           </Card>
+        ) : filteredCampaigns.length === 0 ? (
+          <div className="text-center py-8">
+            <p className="text-gray-500">No campaigns found matching your search.</p>
+            <Button 
+              variant="ghost" 
+              onClick={() => setSearchQuery('')}
+              className="mt-2"
+            >
+              Clear Search
+            </Button>
+          </div>
         ) : (
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            {campaigns.map((campaign) => {
+            {filteredCampaigns.map((campaign) => {
               const { status, color } = getCampaignStatus(campaign)
               
               return (
@@ -269,12 +299,24 @@ export default function CampaignsPage() {
 
                     {/* Actions */}
                     <div className="flex gap-2">
-                      <Button variant="outline" size="sm" className="flex-1">
-                        View Details
-                      </Button>
-                      <Button size="sm" className="flex-1">
-                        Create Booking
-                      </Button>
+                      <DetailsDialog 
+                        data={campaign}
+                        type="campaign"
+                        trigger={
+                          <Button variant="outline" size="sm" className="flex-1">
+                            View Details
+                          </Button>
+                        }
+                      />
+                      <BookingDialog 
+                        prefilledCampaignId={campaign.id}
+                        onSuccess={handleCampaignSuccess}
+                        trigger={
+                          <Button size="sm" className="flex-1">
+                            Create Booking
+                          </Button>
+                        }
+                      />
                     </div>
                   </CardContent>
                 </Card>

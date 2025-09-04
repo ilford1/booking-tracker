@@ -8,6 +8,10 @@ import { Badge } from '@/components/ui/badge'
 import { getCreators } from '@/lib/actions/creators'
 import { formatCurrency } from '@/lib/utils'
 import type { Creator } from '@/types'
+import { CreatorDialog } from '@/components/dialogs/creator-dialog'
+import { BookingDialog } from '@/components/dialogs/booking-dialog'
+import { DetailsDialog } from '@/components/dialogs/details-dialog'
+import { SearchInput } from '@/components/search-input'
 import { 
   Plus, 
   Search, 
@@ -19,13 +23,19 @@ import {
 
 export default function CreatorsPage() {
   const [creators, setCreators] = useState<Creator[]>([])
+  const [filteredCreators, setFilteredCreators] = useState<Creator[]>([])
   const [loading, setLoading] = useState(true)
+  const [refreshKey, setRefreshKey] = useState(0)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [platformFilter, setPlatformFilter] = useState('')
 
   useEffect(() => {
     const fetchData = async () => {
       try {
+        setLoading(true)
         const creatorsData = await getCreators()
         setCreators(creatorsData)
+        setFilteredCreators(creatorsData)
       } catch (error) {
         console.error('Error fetching creators:', error)
       } finally {
@@ -34,7 +44,32 @@ export default function CreatorsPage() {
     }
     
     fetchData()
-  }, [])
+  }, [refreshKey])
+
+  // Filter creators based on search and platform
+  useEffect(() => {
+    let filtered = creators
+    
+    // Apply search filter
+    if (searchQuery) {
+      filtered = filtered.filter(creator => 
+        creator.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (creator.handle && creator.handle.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (creator.tags && creator.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase())))
+      )
+    }
+    
+    // Apply platform filter
+    if (platformFilter && platformFilter !== 'all') {
+      filtered = filtered.filter(creator => creator.platform === platformFilter)
+    }
+    
+    setFilteredCreators(filtered)
+  }, [creators, searchQuery, platformFilter])
+
+  const handleCreatorSuccess = () => {
+    setRefreshKey(prev => prev + 1)
+  }
 
   const getPlatformIcon = (platform: string) => {
     switch (platform) {
@@ -75,18 +110,25 @@ export default function CreatorsPage() {
               </p>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" className="gap-2">
-                <Search className="h-4 w-4" />
-                Search
-              </Button>
-              <Button variant="outline" className="gap-2">
-                <Filter className="h-4 w-4" />
-                Filter
-              </Button>
-              <Button className="gap-2">
-                <Plus className="h-4 w-4" />
-                Add Creator
-              </Button>
+              <SearchInput 
+                value={searchQuery}
+                onChange={setSearchQuery}
+                placeholder="Search creators..."
+                className="w-64"
+              />
+              <select 
+                className="px-3 py-2 border border-input bg-background rounded-md text-sm"
+                value={platformFilter}
+                onChange={(e) => setPlatformFilter(e.target.value)}
+              >
+                <option value="">All Platforms</option>
+                <option value="instagram">Instagram</option>
+                <option value="tiktok">TikTok</option>
+                <option value="youtube">YouTube</option>
+                <option value="facebook">Facebook</option>
+                <option value="other">Other</option>
+              </select>
+              <CreatorDialog onSuccess={handleCreatorSuccess} />
             </div>
           </div>
         </div>
@@ -156,16 +198,27 @@ export default function CreatorsPage() {
                 <p className="text-gray-500 mb-4">
                   Get started by adding your first KOL or content creator to the platform.
                 </p>
-                <Button className="gap-2">
-                  <Plus className="h-4 w-4" />
-                  Add Your First Creator
-                </Button>
+                <CreatorDialog onSuccess={handleCreatorSuccess} />
               </div>
             </CardContent>
           </Card>
+        ) : filteredCreators.length === 0 ? (
+          <div className="text-center py-8">
+            <p className="text-gray-500">No creators found matching your search criteria.</p>
+            <Button 
+              variant="ghost" 
+              onClick={() => {
+                setSearchQuery('')
+                setPlatformFilter('')
+              }}
+              className="mt-2"
+            >
+              Clear Filters
+            </Button>
+          </div>
         ) : (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {creators.map((creator) => (
+            {filteredCreators.map((creator) => (
               <Card key={creator.id} className="hover:shadow-lg transition-shadow">
                 <CardHeader>
                   <div className="flex items-start justify-between">
@@ -256,14 +309,26 @@ export default function CreatorsPage() {
                     )}
                   </div>
 
-                  {/* Actions */}
+                    {/* Actions */}
                   <div className="flex gap-2 mt-4">
-                    <Button variant="outline" size="sm" className="flex-1">
-                      View Profile
-                    </Button>
-                    <Button size="sm" className="flex-1">
-                      Create Booking
-                    </Button>
+                    <DetailsDialog 
+                      data={creator}
+                      type="creator"
+                      trigger={
+                        <Button variant="outline" size="sm" className="flex-1">
+                          View Profile
+                        </Button>
+                      }
+                    />
+                    <BookingDialog 
+                      prefilledCreatorId={creator.id}
+                      onSuccess={handleCreatorSuccess}
+                      trigger={
+                        <Button size="sm" className="flex-1">
+                          Create Booking
+                        </Button>
+                      }
+                    />
                   </div>
                 </CardContent>
               </Card>

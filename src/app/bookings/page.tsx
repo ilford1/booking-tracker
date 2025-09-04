@@ -8,6 +8,8 @@ import { Badge } from '@/components/ui/badge'
 import { getBookings } from '@/lib/actions/bookings'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { BOOKING_STATUSES, STATUS_COLORS, type Booking } from '@/types'
+import { BookingDialog } from '@/components/dialogs/booking-dialog'
+import { StatusSelect } from '@/components/status-select'
 import { 
   Plus, 
   Search, 
@@ -22,10 +24,12 @@ import {
 export default function BookingsPage() {
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(true)
+  const [refreshKey, setRefreshKey] = useState(0)
 
   useEffect(() => {
     const fetchData = async () => {
       try {
+        setLoading(true)
         const bookingsData = await getBookings()
         setBookings(bookingsData)
       } catch (error) {
@@ -36,7 +40,11 @@ export default function BookingsPage() {
     }
     
     fetchData()
-  }, [])
+  }, [refreshKey])
+
+  const handleBookingSuccess = () => {
+    setRefreshKey(prev => prev + 1)
+  }
 
   if (loading) {
     return (
@@ -88,10 +96,7 @@ export default function BookingsPage() {
                 <List className="h-4 w-4" />
                 Table View
               </Button>
-              <Button className="gap-2">
-                <Plus className="h-4 w-4" />
-                New Booking
-              </Button>
+              <BookingDialog onSuccess={handleBookingSuccess} />
             </div>
           </div>
         </div>
@@ -171,10 +176,7 @@ export default function BookingsPage() {
                 <p className="text-gray-500 mb-4">
                   Create your first booking to start tracking creator collaborations.
                 </p>
-                <Button className="gap-2">
-                  <Plus className="h-4 w-4" />
-                  Create Your First Booking
-                </Button>
+                <BookingDialog onSuccess={handleBookingSuccess} />
               </div>
             </CardContent>
           </Card>
@@ -265,14 +267,29 @@ export default function BookingsPage() {
                             Created {formatDate(booking.created_at)}
                           </div>
 
+                          {/* Status Update */}
+                          <div className="mb-3">
+                            <StatusSelect 
+                              bookingId={booking.id}
+                              currentStatus={booking.status}
+                              onStatusUpdate={handleBookingSuccess}
+                            />
+                          </div>
+
                           {/* Actions */}
                           <div className="flex gap-2">
                             <Button variant="ghost" size="sm" className="flex-1 text-xs">
                               View
                             </Button>
-                            <Button size="sm" className="flex-1 text-xs">
-                              Update
-                            </Button>
+                            <BookingDialog 
+                              booking={booking}
+                              onSuccess={handleBookingSuccess}
+                              trigger={
+                                <Button size="sm" className="flex-1 text-xs">
+                                  Edit
+                                </Button>
+                              }
+                            />
                           </div>
                         </CardContent>
                       </Card>

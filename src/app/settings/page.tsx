@@ -1,7 +1,8 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { AppShell } from '@/components/app-shell'
+import { toast } from 'sonner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -64,6 +65,18 @@ export default function SettingsPage() {
 
   const [unsavedChanges, setUnsavedChanges] = useState(false)
 
+  // Load settings from localStorage on mount
+  useEffect(() => {
+    const savedSettings = localStorage.getItem('booking-tracker-settings')
+    if (savedSettings) {
+      try {
+        setSettings(JSON.parse(savedSettings))
+      } catch (error) {
+        console.error('Failed to load saved settings:', error)
+      }
+    }
+  }, [])
+
   const updateSetting = (category: string, key: string, value: any) => {
     setSettings(prev => ({
       ...prev,
@@ -76,9 +89,43 @@ export default function SettingsPage() {
   }
 
   const handleSave = () => {
-    // Save settings logic here
-    console.log('Saving settings:', settings)
-    setUnsavedChanges(false)
+    try {
+      localStorage.setItem('booking-tracker-settings', JSON.stringify(settings))
+      setUnsavedChanges(false)
+      toast.success('Settings saved successfully!')
+    } catch (error) {
+      console.error('Failed to save settings:', error)
+      toast.error('Failed to save settings')
+    }
+  }
+
+  const handleExport = () => {
+    try {
+      const data = JSON.stringify(settings, null, 2)
+      const blob = new Blob([data], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'booking-tracker-settings.json'
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      toast.success('Settings exported successfully!')
+    } catch (error) {
+      console.error('Failed to export settings:', error)
+      toast.error('Failed to export settings')
+    }
+  }
+
+  const handleDeleteAccount = () => {
+    if (window.confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
+      // In a real app, this would make an API call
+      localStorage.clear()
+      toast.success('Account deleted successfully!')
+      // Redirect to login page
+      window.location.href = '/'
+    }
   }
 
   return (
@@ -361,7 +408,7 @@ export default function SettingsPage() {
                   <h4 className="font-medium">Export Data</h4>
                   <p className="text-sm text-gray-500">Download your data as CSV or JSON</p>
                 </div>
-                <Button variant="outline" className="gap-2">
+                <Button variant="outline" className="gap-2" onClick={handleExport}>
                   <Download className="h-4 w-4" />
                   Export
                 </Button>
@@ -383,7 +430,7 @@ export default function SettingsPage() {
                   <h4 className="font-medium">Delete Account</h4>
                   <p className="text-sm text-gray-500">Permanently delete your account and data</p>
                 </div>
-                <Button variant="destructive" className="gap-2">
+                <Button variant="destructive" className="gap-2" onClick={handleDeleteAccount}>
                   <Trash2 className="h-4 w-4" />
                   Delete Account
                 </Button>

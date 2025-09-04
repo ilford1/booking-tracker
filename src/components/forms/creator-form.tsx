@@ -19,29 +19,33 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { FileUpload } from '@/components/file-upload'
 import { createCreator } from '@/lib/actions/creators'
 import { toast } from 'sonner'
 import { Loader2, Plus, X } from 'lucide-react'
 
 const creatorFormSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
-  email: z.string().email('Invalid email address').optional(),
+  email: z.string().email('Invalid email address').optional().or(z.literal('')),
   platform: z.enum(['instagram', 'youtube', 'tiktok', 'facebook', 'other']),
   handle: z.string().min(1, 'Handle is required'),
-  followers_count: z.number().min(0).optional(),
-  engagement_rate: z.number().min(0).max(100).optional(),
+  phone: z.string().optional(),
+  followers: z.number().min(0).optional(),
   avg_views: z.number().min(0).optional(),
-  categories: z.array(z.string()).min(1, 'Select at least one category'),
-  location: z.string().optional(),
-  languages: z.array(z.string()).optional(),
-  rates: z.object({
+  avg_likes: z.number().min(0).optional(),
+  tags: z.array(z.string()).min(1, 'Select at least one tag'),
+  rate_card: z.object({
     post: z.number().min(0).optional(),
     story: z.number().min(0).optional(),
     reel: z.number().min(0).optional(),
     video: z.number().min(0).optional(),
-  }),
+  }).optional(),
   notes: z.string().optional(),
+  links: z.object({
+    instagram: z.string().optional(),
+    tiktok: z.string().optional(),
+    youtube: z.string().optional(),
+    website: z.string().optional(),
+  }).optional(),
 })
 
 type CreatorFormValues = z.infer<typeof creatorFormSchema>
@@ -60,15 +64,11 @@ const PLATFORMS = [
   { value: 'other', label: 'Other' },
 ]
 
-const CATEGORIES = [
+const TAGS = [
   'Fashion', 'Beauty', 'Lifestyle', 'Travel', 'Food', 'Fitness', 'Tech',
   'Gaming', 'Education', 'Business', 'Entertainment', 'Health', 'Sports',
-  'Parenting', 'Home', 'Art', 'Music', 'Books', 'Cars', 'Pets'
-]
-
-const LANGUAGES = [
-  'English', 'Spanish', 'French', 'German', 'Italian', 'Portuguese',
-  'Chinese', 'Japanese', 'Korean', 'Arabic', 'Hindi', 'Russian'
+  'Parenting', 'Home', 'Art', 'Music', 'Books', 'Cars', 'Pets', 'Micro',
+  'Nano', 'Macro', 'Mega', 'Celebrity', 'Local', 'Niche', 'Trending'
 ]
 
 export function CreatorForm({ onSuccess, onCancel, initialData }: CreatorFormProps) {
@@ -81,19 +81,24 @@ export function CreatorForm({ onSuccess, onCancel, initialData }: CreatorFormPro
       email: '',
       platform: 'instagram',
       handle: '',
-      followers_count: undefined,
-      engagement_rate: undefined,
+      phone: '',
+      followers: undefined,
       avg_views: undefined,
-      categories: [],
-      location: '',
-      languages: [],
-      rates: {
+      avg_likes: undefined,
+      tags: [],
+      rate_card: {
         post: undefined,
         story: undefined,
         reel: undefined,
         video: undefined,
       },
       notes: '',
+      links: {
+        instagram: '',
+        tiktok: '',
+        youtube: '',
+        website: '',
+      },
       ...initialData,
     },
   })
@@ -101,7 +106,26 @@ export function CreatorForm({ onSuccess, onCancel, initialData }: CreatorFormPro
   const onSubmit = async (data: CreatorFormValues) => {
     try {
       setIsSubmitting(true)
-      await createCreator(data)
+      // Transform form data to match database schema
+      const creatorData = {
+        name: data.name,
+        email: data.email || null,
+        platform: data.platform,
+        handle: data.handle,
+        phone: data.phone || null,
+        followers: data.followers || null,
+        avg_views: data.avg_views || null,
+        avg_likes: data.avg_likes || null,
+        tags: data.tags,
+        rate_card: data.rate_card && Object.values(data.rate_card).some(v => v !== undefined) 
+          ? Object.fromEntries(Object.entries(data.rate_card).filter(([_, v]) => v !== undefined))
+          : null,
+        notes: data.notes || null,
+        links: data.links && Object.values(data.links).some(v => v && v !== '') 
+          ? Object.fromEntries(Object.entries(data.links).filter(([_, v]) => v && v !== ''))
+          : null,
+      }
+      await createCreator(creatorData)
       toast.success('Creator added successfully!')
       onSuccess?.()
     } catch (error) {
@@ -112,28 +136,16 @@ export function CreatorForm({ onSuccess, onCancel, initialData }: CreatorFormPro
     }
   }
 
-  const addCategory = (category: string) => {
-    const currentCategories = form.getValues('categories')
-    if (!currentCategories.includes(category)) {
-      form.setValue('categories', [...currentCategories, category])
+  const addTag = (tag: string) => {
+    const currentTags = form.getValues('tags')
+    if (!currentTags.includes(tag)) {
+      form.setValue('tags', [...currentTags, tag])
     }
   }
 
-  const removeCategory = (category: string) => {
-    const currentCategories = form.getValues('categories')
-    form.setValue('categories', currentCategories.filter(c => c !== category))
-  }
-
-  const addLanguage = (language: string) => {
-    const currentLanguages = form.getValues('languages') || []
-    if (!currentLanguages.includes(language)) {
-      form.setValue('languages', [...currentLanguages, language])
-    }
-  }
-
-  const removeLanguage = (language: string) => {
-    const currentLanguages = form.getValues('languages') || []
-    form.setValue('languages', currentLanguages.filter(l => l !== language))
+  const removeTag = (tag: string) => {
+    const currentTags = form.getValues('tags')
+    form.setValue('tags', currentTags.filter(t => t !== tag))
   }
 
   return (
@@ -166,7 +178,7 @@ export function CreatorForm({ onSuccess, onCancel, initialData }: CreatorFormPro
                   <FormItem>
                     <FormLabel>Email</FormLabel>
                     <FormControl>
-                      <Input type="email" placeholder="jane@example.com" {...field} />
+                      <Input type="email" placeholder="jane@example.com" {...field} value={field.value || ''} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -217,12 +229,12 @@ export function CreatorForm({ onSuccess, onCancel, initialData }: CreatorFormPro
 
             <FormField
               control={form.control}
-              name="location"
+              name="phone"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Location</FormLabel>
+                  <FormLabel>Phone</FormLabel>
                   <FormControl>
-                    <Input placeholder="New York, NY" {...field} />
+                    <Input placeholder="+1 234 567 8900" {...field} value={field.value || ''} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -239,7 +251,7 @@ export function CreatorForm({ onSuccess, onCancel, initialData }: CreatorFormPro
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <FormField
                 control={form.control}
-                name="followers_count"
+                name="followers"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Followers</FormLabel>
@@ -248,26 +260,7 @@ export function CreatorForm({ onSuccess, onCancel, initialData }: CreatorFormPro
                         type="number"
                         placeholder="10000"
                         {...field}
-                        onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="engagement_rate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Engagement Rate (%)</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        placeholder="3.5"
-                        step="0.1"
-                        {...field}
+                        value={field.value || ''}
                         onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
                       />
                     </FormControl>
@@ -287,6 +280,27 @@ export function CreatorForm({ onSuccess, onCancel, initialData }: CreatorFormPro
                         type="number"
                         placeholder="5000"
                         {...field}
+                        value={field.value || ''}
+                        onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="avg_likes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Average Likes</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        placeholder="500"
+                        {...field}
+                        value={field.value || ''}
                         onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
                       />
                     </FormControl>
@@ -300,38 +314,39 @@ export function CreatorForm({ onSuccess, onCancel, initialData }: CreatorFormPro
 
         <Card>
           <CardHeader>
-            <CardTitle>Categories & Languages</CardTitle>
+            <CardTitle>Tags & Links</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <FormField
               control={form.control}
-              name="categories"
+              name="tags"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Content Categories *</FormLabel>
+                  <FormLabel>Tags *</FormLabel>
                   <div className="flex flex-wrap gap-2 mb-2">
-                    {field.value.map((category) => (
-                      <Badge key={category} variant="secondary" className="gap-1">
-                        {category}
+                    {field.value.map((tag) => (
+                      <Badge key={tag} variant="secondary" className="gap-1">
+                        {tag}
                         <Button
+                          type="button"
                           size="sm"
                           variant="ghost"
                           className="h-auto p-0 text-gray-500 hover:text-red-600"
-                          onClick={() => removeCategory(category)}
+                          onClick={() => removeTag(tag)}
                         >
                           <X className="h-3 w-3" />
                         </Button>
                       </Badge>
                     ))}
                   </div>
-                  <Select onValueChange={addCategory}>
+                  <Select onValueChange={addTag}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Add category" />
+                      <SelectValue placeholder="Add tag" />
                     </SelectTrigger>
                     <SelectContent>
-                      {CATEGORIES.filter(cat => !field.value.includes(cat)).map((category) => (
-                        <SelectItem key={category} value={category}>
-                          {category}
+                      {TAGS.filter(tag => !field.value.includes(tag)).map((tag) => (
+                        <SelectItem key={tag} value={tag}>
+                          {tag}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -341,42 +356,56 @@ export function CreatorForm({ onSuccess, onCancel, initialData }: CreatorFormPro
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="languages"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Languages</FormLabel>
-                  <div className="flex flex-wrap gap-2 mb-2">
-                    {(field.value || []).map((language) => (
-                      <Badge key={language} variant="outline" className="gap-1">
-                        {language}
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-auto p-0 text-gray-500 hover:text-red-600"
-                          onClick={() => removeLanguage(language)}
-                        >
-                          <X className="h-3 w-3" />
-                        </Button>
-                      </Badge>
-                    ))}
-                  </div>
-                  <Select onValueChange={addLanguage}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Add language" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {LANGUAGES.filter(lang => !(field.value || []).includes(lang)).map((language) => (
-                        <SelectItem key={language} value={language}>
-                          {language}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </FormItem>
-              )}
-            />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="links.instagram"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Instagram URL</FormLabel>
+                    <FormControl>
+                      <Input placeholder="https://instagram.com/username" {...field} value={field.value || ''} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="links.tiktok"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>TikTok URL</FormLabel>
+                    <FormControl>
+                      <Input placeholder="https://tiktok.com/@username" {...field} value={field.value || ''} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="links.youtube"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>YouTube URL</FormLabel>
+                    <FormControl>
+                      <Input placeholder="https://youtube.com/@username" {...field} value={field.value || ''} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="links.website"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Website URL</FormLabel>
+                    <FormControl>
+                      <Input placeholder="https://example.com" {...field} value={field.value || ''} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+            </div>
           </CardContent>
         </Card>
 
@@ -388,7 +417,7 @@ export function CreatorForm({ onSuccess, onCancel, initialData }: CreatorFormPro
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <FormField
                 control={form.control}
-                name="rates.post"
+                name="rate_card.post"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Post Rate ($)</FormLabel>
@@ -397,6 +426,7 @@ export function CreatorForm({ onSuccess, onCancel, initialData }: CreatorFormPro
                         type="number"
                         placeholder="500"
                         {...field}
+                        value={field.value || ''}
                         onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
                       />
                     </FormControl>
@@ -406,7 +436,7 @@ export function CreatorForm({ onSuccess, onCancel, initialData }: CreatorFormPro
 
               <FormField
                 control={form.control}
-                name="rates.story"
+                name="rate_card.story"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Story Rate ($)</FormLabel>
@@ -415,6 +445,7 @@ export function CreatorForm({ onSuccess, onCancel, initialData }: CreatorFormPro
                         type="number"
                         placeholder="250"
                         {...field}
+                        value={field.value || ''}
                         onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
                       />
                     </FormControl>
@@ -424,7 +455,7 @@ export function CreatorForm({ onSuccess, onCancel, initialData }: CreatorFormPro
 
               <FormField
                 control={form.control}
-                name="rates.reel"
+                name="rate_card.reel"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Reel Rate ($)</FormLabel>
@@ -433,6 +464,7 @@ export function CreatorForm({ onSuccess, onCancel, initialData }: CreatorFormPro
                         type="number"
                         placeholder="750"
                         {...field}
+                        value={field.value || ''}
                         onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
                       />
                     </FormControl>
@@ -442,7 +474,7 @@ export function CreatorForm({ onSuccess, onCancel, initialData }: CreatorFormPro
 
               <FormField
                 control={form.control}
-                name="rates.video"
+                name="rate_card.video"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Video Rate ($)</FormLabel>
@@ -451,6 +483,7 @@ export function CreatorForm({ onSuccess, onCancel, initialData }: CreatorFormPro
                         type="number"
                         placeholder="1000"
                         {...field}
+                        value={field.value || ''}
                         onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
                       />
                     </FormControl>
