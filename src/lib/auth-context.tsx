@@ -75,13 +75,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .single()
 
       if (error) {
-        console.error('Error fetching user profile:', error)
+        console.warn('Error fetching user profile:', error)
+        
+        // If profile doesn't exist, try to create one
+        if (error.code === 'PGRST116' || error.message?.includes('No rows found')) {
+          console.log('User profile not found, creating default profile...')
+          return await createDefaultUserProfile(userId)
+        }
+        
         return null
       }
 
       return data
     } catch (error) {
-      console.error('Error fetching user profile:', error)
+      console.error('Unexpected error fetching user profile:', error)
+      return null
+    }
+  }
+
+  // Create a default user profile
+  const createDefaultUserProfile = async (userId: string): Promise<UserProfile | null> => {
+    try {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .insert({
+          id: userId,
+          user_role: 'customer',
+          first_name: '',
+          last_name: '',
+          onboarded: false
+        })
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Error creating default user profile:', error)
+        return null
+      }
+
+      console.log('Created default user profile:', data)
+      return data
+    } catch (error) {
+      console.error('Error creating default user profile:', error)
       return null
     }
   }
@@ -93,8 +128,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return
     }
 
-    const profile = await fetchUserProfile(authUser.id)
-    setUser({ ...authUser, profile: profile || undefined })
+    try {
+      const profile = await fetchUserProfile(authUser.id)
+      setUser({ ...authUser, profile: profile || undefined })
+      
+      if (!profile) {
+        console.warn('User profile could not be loaded or created')
+        // Still set the user without profile to allow basic functionality
+        setUser({ ...authUser, profile: undefined })
+      }
+    } catch (error) {
+      console.error('Error setting user with profile:', error)
+      // Set user without profile as fallback
+      setUser({ ...authUser, profile: undefined })
+    }
   }
 
   // Initialize auth state
