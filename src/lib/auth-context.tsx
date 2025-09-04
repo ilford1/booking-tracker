@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import { User, Session, AuthError } from '@supabase/supabase-js'
 import { createClient } from '@/utils/supabase/client'
+import { createSimpleClient, createFallbackClient } from '@/utils/supabase/fallback-client'
 import { toast } from 'sonner'
 
 // Types for user roles and profile
@@ -45,7 +46,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
-  const supabase = createClient()
+  
+  // Try different client configurations for better reliability
+  const getSupabaseClient = () => {
+    try {
+      // First try the enhanced client with retries
+      return createFallbackClient()
+    } catch (error) {
+      console.warn('Fallback client failed, trying simple client:', error)
+      try {
+        return createSimpleClient()
+      } catch (simpleError) {
+        console.warn('Simple client failed, using default:', simpleError)
+        return createClient()
+      }
+    }
+  }
+  
+  const supabase = getSupabaseClient()
 
   // Fetch user profile from database
   const fetchUserProfile = async (userId: string): Promise<UserProfile | null> => {
