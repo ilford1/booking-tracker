@@ -1,3 +1,6 @@
+// Force dynamic rendering since this page uses server actions with cookies
+export const dynamic = 'force-dynamic'
+
 import { AppShell } from '@/components/app-shell'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'

@@ -30,6 +30,12 @@ export async function createClient() {
 
 // For admin operations that bypass RLS, create a service role client
 export async function createAdminClient() {
+  // Check if service role key is available
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    console.warn('SUPABASE_SERVICE_ROLE_KEY not configured, falling back to regular client')
+    return createClient()
+  }
+
   const cookieStore = await cookies()
 
   return createServerClient(
