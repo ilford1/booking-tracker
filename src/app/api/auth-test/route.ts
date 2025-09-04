@@ -11,10 +11,10 @@ export async function GET() {
     // Get the current session
     const { data: { session }, error: sessionError } = await supabase.auth.getSession()
     
-    // Test database connectivity by querying user_profiles
+    // Test basic connectivity without RLS-protected tables
     const { data: profiles, error: dbError } = await supabase
-      .from('user_profiles')
-      .select('count')
+      .from('creators')
+      .select('id')
       .limit(1)
     
     return NextResponse.json({
