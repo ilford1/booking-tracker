@@ -27,8 +27,8 @@ import { BOOKING_STATUSES, CONTACT_CHANNELS } from '@/types'
 import type { Creator, Campaign } from '@/types'
 
 const bookingFormSchema = z.object({
-  campaign_id: z.string().optional().or(z.literal('')),
-  creator_id: z.string().optional().or(z.literal('')),
+  campaign_id: z.string().optional().or(z.literal('none')),
+  creator_id: z.string().optional().or(z.literal('none')),
   status: z.enum(BOOKING_STATUSES),
   offer_amount: z.number().min(0).optional(),
   agreed_amount: z.number().min(0).optional(),
@@ -65,8 +65,8 @@ export function BookingForm({
   const form = useForm<BookingFormValues>({
     resolver: zodResolver(bookingFormSchema),
     defaultValues: {
-      campaign_id: prefilledCampaignId || '',
-      creator_id: prefilledCreatorId || '',
+      campaign_id: prefilledCampaignId || 'none',
+      creator_id: prefilledCreatorId || 'none',
       status: 'prospect',
       offer_amount: undefined,
       agreed_amount: undefined,
@@ -105,8 +105,8 @@ export function BookingForm({
       setIsSubmitting(true)
       
       const bookingData = {
-        campaign_id: data.campaign_id && data.campaign_id !== '' ? data.campaign_id : null,
-        creator_id: data.creator_id && data.creator_id !== '' ? data.creator_id : null,
+        campaign_id: data.campaign_id && data.campaign_id !== '' && data.campaign_id !== 'none' ? data.campaign_id : null,
+        creator_id: data.creator_id && data.creator_id !== '' && data.creator_id !== 'none' ? data.creator_id : null,
         status: data.status,
         offer_amount: data.offer_amount || null,
         agreed_amount: data.agreed_amount || null,
@@ -172,7 +172,7 @@ export function BookingForm({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">No Campaign</SelectItem>
+                        <SelectItem value="none">No Campaign</SelectItem>
                         {campaigns.map((campaign) => (
                           <SelectItem key={campaign.id} value={campaign.id}>
                             {campaign.name}
@@ -198,7 +198,7 @@ export function BookingForm({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">No Creator</SelectItem>
+                        <SelectItem value="none">No Creator</SelectItem>
                         {creators.map((creator) => (
                           <SelectItem key={creator.id} value={creator.id}>
                             {creator.name} ({creator.handle})

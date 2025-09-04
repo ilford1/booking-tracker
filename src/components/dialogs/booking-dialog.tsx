@@ -69,8 +69,8 @@ export function BookingDialog({
           <BookingForm
             initialData={booking ? {
               id: booking.id,
-              campaign_id: booking.campaign_id || '',
-              creator_id: booking.creator_id || '',
+              campaign_id: booking.campaign_id || 'none',
+              creator_id: booking.creator_id || 'none',
               status: booking.status,
               offer_amount: booking.offer_amount || undefined,
               agreed_amount: booking.agreed_amount || undefined,
