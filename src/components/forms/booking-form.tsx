@@ -27,17 +27,17 @@ import { BOOKING_STATUSES, CONTACT_CHANNELS } from '@/types'
 import type { Creator, Campaign } from '@/types'
 
 const bookingFormSchema = z.object({
-  campaign_id: z.string().optional(),
-  creator_id: z.string().optional(),
+  campaign_id: z.string().optional().or(z.literal('')),
+  creator_id: z.string().optional().or(z.literal('')),
   status: z.enum(BOOKING_STATUSES),
   offer_amount: z.number().min(0).optional(),
   agreed_amount: z.number().min(0).optional(),
-  currency: z.string(),
-  contract_url: z.string().optional(),
-  brief: z.string().optional(),
+  currency: z.string().min(1, 'Currency is required'),
+  contract_url: z.string().optional().or(z.literal('')),
+  brief: z.string().optional().or(z.literal('')),
   contact_channel: z.enum(CONTACT_CHANNELS).optional(),
-  utm_code: z.string().optional(),
-  affiliate_code: z.string().optional(),
+  utm_code: z.string().optional().or(z.literal('')),
+  affiliate_code: z.string().optional().or(z.literal('')),
 })
 
 type BookingFormValues = z.infer<typeof bookingFormSchema>
@@ -73,7 +73,7 @@ export function BookingForm({
       currency: 'USD',
       contract_url: '',
       brief: '',
-      contact_channel: 'email',
+      contact_channel: undefined,
       utm_code: '',
       affiliate_code: '',
       ...initialData,
@@ -91,7 +91,8 @@ export function BookingForm({
         setCampaigns(campaignsData)
       } catch (error) {
         console.error('Error fetching data:', error)
-        toast.error('Failed to load creators and campaigns')
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+        toast.error(`Failed to load creators and campaigns: ${errorMessage}`)
       } finally {
         setLoading(false)
       }
@@ -104,17 +105,17 @@ export function BookingForm({
       setIsSubmitting(true)
       
       const bookingData = {
-        campaign_id: data.campaign_id || null,
-        creator_id: data.creator_id || null,
+        campaign_id: data.campaign_id && data.campaign_id !== '' ? data.campaign_id : null,
+        creator_id: data.creator_id && data.creator_id !== '' ? data.creator_id : null,
         status: data.status,
         offer_amount: data.offer_amount || null,
         agreed_amount: data.agreed_amount || null,
         currency: data.currency,
-        contract_url: data.contract_url || null,
-        brief: data.brief || null,
+        contract_url: data.contract_url && data.contract_url !== '' ? data.contract_url : null,
+        brief: data.brief && data.brief !== '' ? data.brief : null,
         contact_channel: data.contact_channel || null,
-        utm_code: data.utm_code || null,
-        affiliate_code: data.affiliate_code || null,
+        utm_code: data.utm_code && data.utm_code !== '' ? data.utm_code : null,
+        affiliate_code: data.affiliate_code && data.affiliate_code !== '' ? data.affiliate_code : null,
       }
 
       if (initialData?.id) {
@@ -127,8 +128,12 @@ export function BookingForm({
       
       onSuccess?.()
     } catch (error) {
-      toast.error(initialData?.id ? 'Failed to update booking' : 'Failed to create booking')
-      console.error(error)
+      console.error('Booking form error:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      toast.error(initialData?.id 
+        ? `Failed to update booking: ${errorMessage}` 
+        : `Failed to create booking: ${errorMessage}`
+      )
     } finally {
       setIsSubmitting(false)
     }
