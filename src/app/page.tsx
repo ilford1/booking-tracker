@@ -3,6 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { getDashboardKPIs, getRecentActivity } from '@/lib/actions/dashboard'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
+import { CampaignDialog } from '@/components/dialogs/campaign-dialog'
+import { CreatorDialog } from '@/components/dialogs/creator-dialog'
+import { BookingDialog } from '@/components/dialogs/booking-dialog'
+import { CalendarWidget } from '@/components/calendar-widget'
+import Link from 'next/link'
 import { 
   TrendingUp, 
   Calendar, 
@@ -10,7 +15,8 @@ import {
   Users,
   ArrowUpRight,
   ArrowDownRight,
-  Megaphone
+  Megaphone,
+  Download
 } from 'lucide-react'
 
 export default async function Dashboard() {
@@ -30,8 +36,13 @@ export default async function Dashboard() {
               </p>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline">Export Report</Button>
-              <Button>Create Campaign</Button>
+              <Button variant="outline" className="gap-2" asChild>
+                <Link href="/reports">
+                  <Download className="h-4 w-4" />
+                  Export Report
+                </Link>
+              </Button>
+              <CampaignDialog />
             </div>
           </div>
         </div>
@@ -104,9 +115,53 @@ export default async function Dashboard() {
           </Card>
         </div>
 
-        {/* Recent Activity & Quick Actions */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Recent Activity */}
+        {/* Calendar and Activity Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          {/* Calendar Widget */}
+          <CalendarWidget className="lg:col-span-2" />
+          
+          {/* Quick Actions */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Quick Actions</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-3">
+                <CreatorDialog 
+                  trigger={
+                    <Button variant="outline" className="h-auto p-4 flex flex-col gap-2">
+                      <Users className="h-5 w-5" />
+                      <span className="text-sm">Add Creator</span>
+                    </Button>
+                  }
+                />
+                <CampaignDialog 
+                  trigger={
+                    <Button variant="outline" className="h-auto p-4 flex flex-col gap-2">
+                      <Megaphone className="h-5 w-5" />
+                      <span className="text-sm">New Campaign</span>
+                    </Button>
+                  }
+                />
+                <Button variant="outline" className="h-auto p-4 flex flex-col gap-2" asChild>
+                  <Link href="/calendar">
+                    <Calendar className="h-5 w-5" />
+                    <span className="text-sm">Schedule Post</span>
+                  </Link>
+                </Button>
+                <Button variant="outline" className="h-auto p-4 flex flex-col gap-2" asChild>
+                  <Link href="/payments">
+                    <DollarSign className="h-5 w-5" />
+                    <span className="text-sm">Process Payment</span>
+                  </Link>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Recent Activity */}
+        <div className="grid grid-cols-1 gap-6">
           <Card>
             <CardHeader>
               <CardTitle>Recent Activity</CardTitle>
@@ -137,33 +192,6 @@ export default async function Dashboard() {
                   </div>
                   <span className="text-xs text-gray-500">6h ago</span>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Quick Actions */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Quick Actions</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-3">
-                <Button variant="outline" className="h-auto p-4 flex flex-col gap-2">
-                  <Users className="h-5 w-5" />
-                  <span className="text-sm">Add Creator</span>
-                </Button>
-                <Button variant="outline" className="h-auto p-4 flex flex-col gap-2">
-                  <Megaphone className="h-5 w-5" />
-                  <span className="text-sm">New Campaign</span>
-                </Button>
-                <Button variant="outline" className="h-auto p-4 flex flex-col gap-2">
-                  <Calendar className="h-5 w-5" />
-                  <span className="text-sm">Schedule Post</span>
-                </Button>
-                <Button variant="outline" className="h-auto p-4 flex flex-col gap-2">
-                  <DollarSign className="h-5 w-5" />
-                  <span className="text-sm">Process Payment</span>
-                </Button>
               </div>
             </CardContent>
           </Card>
