@@ -1,6 +1,6 @@
 'use client'
 
-import React from 'react'
+import React, { useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
@@ -19,6 +19,9 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { CommandPalette } from '@/components/command-palette'
+import { ThemeToggle } from '@/components/theme-toggle'
+import { GlobalSearch } from '@/components/global-search'
+import { useGlobalSearch } from '@/hooks/use-global-search'
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
@@ -37,6 +40,20 @@ interface AppShellProps {
 
 export function AppShell({ children }: AppShellProps) {
   const pathname = usePathname()
+  const globalSearch = useGlobalSearch()
+
+  // Global keyboard shortcuts
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault()
+        globalSearch.open()
+      }
+    }
+
+    document.addEventListener('keydown', down)
+    return () => document.removeEventListener('keydown', down)
+  }, [globalSearch])
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -98,9 +115,11 @@ export function AppShell({ children }: AppShellProps) {
                     <Search className="h-5 w-5 text-gray-400" />
                   </div>
                   <input
-                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-gray-900 focus:border-gray-900 sm:text-sm"
-                    placeholder="Search creators, campaigns..."
+                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white dark:bg-gray-800 dark:border-gray-600 placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-gray-900 focus:border-gray-900 sm:text-sm cursor-pointer"
+                    placeholder="Search creators, campaigns... (⌘K)"
                     type="search"
+                    readOnly
+                    onClick={globalSearch.open}
                   />
                 </div>
               </div>
@@ -116,6 +135,8 @@ export function AppShell({ children }: AppShellProps) {
               <Button variant="ghost" size="icon">
                 <Bell className="h-5 w-5" />
               </Button>
+              
+              <ThemeToggle />
 
               {/* User menu placeholder */}
               <div className="ml-3 relative">
@@ -129,6 +150,12 @@ export function AppShell({ children }: AppShellProps) {
 
         {/* Command Palette */}
         <CommandPalette />
+        
+        {/* Global Search */}
+        <GlobalSearch 
+          open={globalSearch.isOpen} 
+          onClose={globalSearch.close} 
+        />
 
         {/* Page content */}
         <main className="flex-1 relative overflow-y-auto focus:outline-none">

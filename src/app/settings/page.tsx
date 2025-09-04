@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { AppShell } from '@/components/app-shell'
 import { toast } from 'sonner'
+import { useTheme } from 'next-themes'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -29,6 +30,7 @@ import {
 } from 'lucide-react'
 
 export default function SettingsPage() {
+  const { theme, setTheme } = useTheme()
   const [settings, setSettings] = useState({
     profile: {
       name: 'John Doe',
@@ -46,7 +48,7 @@ export default function SettingsPage() {
       marketingEmails: false,
     },
     appearance: {
-      theme: 'light',
+      theme: theme || 'system',
       compactMode: false,
       sidebarCollapsed: false,
     },
@@ -78,6 +80,12 @@ export default function SettingsPage() {
   }, [])
 
   const updateSetting = (category: string, key: string, value: any) => {
+    // Handle theme changes immediately
+    if (category === 'appearance' && key === 'theme') {
+      setTheme(value)
+      toast.success(`Theme changed to ${value === 'system' ? 'system default' : value} mode`)
+    }
+    
     setSettings(prev => ({
       ...prev,
       [category]: {
@@ -289,7 +297,7 @@ export default function SettingsPage() {
                   <p className="text-sm text-gray-500">Choose your preferred theme</p>
                 </div>
                 <Select 
-                  value={settings.appearance.theme}
+                  value={theme || 'system'}
                   onValueChange={(value) => updateSetting('appearance', 'theme', value)}
                 >
                   <SelectTrigger className="w-32">
