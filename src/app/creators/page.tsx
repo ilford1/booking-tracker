@@ -12,13 +12,15 @@ import { CreatorDialog } from '@/components/dialogs/creator-dialog'
 import { BookingDialog } from '@/components/dialogs/booking-dialog'
 import { DetailsDialog } from '@/components/dialogs/details-dialog'
 import { SearchInput } from '@/components/search-input'
+import { toast } from 'sonner'
 import { 
   Plus, 
   Search, 
   Filter,
   ExternalLink,
   Instagram,
-  MessageCircle
+  MessageCircle,
+  Download
 } from 'lucide-react'
 
 export default function CreatorsPage() {
@@ -69,6 +71,37 @@ export default function CreatorsPage() {
 
   const handleCreatorSuccess = () => {
     setRefreshKey(prev => prev + 1)
+  }
+
+  const handleExport = () => {
+    const csvData = filteredCreators.map(creator => ({
+      Name: creator.name,
+      Handle: creator.handle || '',
+      Email: creator.email || '',
+      Platform: creator.platform || '',
+      Followers: creator.followers || 0,
+      'Engagement Rate': creator.avg_likes || 0,
+      Rate: creator.rate_card ? Object.values(creator.rate_card)[0] : 0,
+      Tags: creator.tags ? creator.tags.join(', ') : '',
+      Location: '',
+      Notes: creator.notes || ''
+    }))
+    
+    const csvContent = [
+      Object.keys(csvData[0]).join(','),
+      ...csvData.map(row => Object.values(row).map(val => 
+        typeof val === 'string' && val.includes(',') ? `"${val}"` : val
+      ).join(','))
+    ].join('\n')
+    
+    const blob = new Blob([csvContent], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `creators-${new Date().toISOString().split('T')[0]}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+    toast.success('Creators exported successfully!')
   }
 
   const getPlatformIcon = (platform: string) => {
@@ -128,6 +161,10 @@ export default function CreatorsPage() {
                 <option value="facebook">Facebook</option>
                 <option value="other">Other</option>
               </select>
+              <Button variant="outline" className="gap-2" onClick={handleExport}>
+                <Download className="h-4 w-4" />
+                Export
+              </Button>
               <CreatorDialog onSuccess={handleCreatorSuccess} />
             </div>
           </div>

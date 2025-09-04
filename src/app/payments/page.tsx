@@ -15,6 +15,16 @@ import {
 } from '@/components/ui/table'
 import { getPayments, getTotalPaymentsByStatus } from '@/lib/actions/payments'
 import { formatCurrency, formatDate } from '@/lib/utils'
+import { SearchInput } from '@/components/search-input'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuCheckboxItem,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu'
+import { toast } from 'sonner'
 import type { Payment, PaymentStatus } from '@/types'
 import { 
   Plus, 
@@ -31,11 +41,15 @@ import {
   FileText
 } from 'lucide-react'
 
+const PAYMENT_STATUSES: PaymentStatus[] = ['unconfirmed', 'pending_invoice', 'waiting_payment', 'paid', 'failed']
+
 export default function PaymentsPage() {
   const [payments, setPayments] = useState<Payment[]>([])
+  const [filteredPayments, setFilteredPayments] = useState<Payment[]>([])
   const [paymentTotals, setPaymentTotals] = useState<Record<PaymentStatus, { count: number; amount: number }>>({} as any)
   const [loading, setLoading] = useState(true)
-  const [selectedStatus, setSelectedStatus] = useState<PaymentStatus | 'all'>('all')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState<PaymentStatus[]>([])
 
   useEffect(() => {
     const fetchData = async () => {
@@ -45,9 +59,10 @@ export default function PaymentsPage() {
           getTotalPaymentsByStatus()
         ])
         setPayments(paymentsData)
+        setFilteredPayments(paymentsData)
         setPaymentTotals(totalsData)
       } catch (error) {
-        console.error('Error fetching payments:', error)
+        console.error('Failed to fetch payments:', error)
       } finally {
         setLoading(false)
       }
@@ -55,6 +70,58 @@ export default function PaymentsPage() {
     
     fetchData()
   }, [])
+
+  // Filter payments based on search and status
+  useEffect(() => {
+    let filtered = payments
+
+    // Apply search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase()
+      filtered = filtered.filter(payment => 
+        payment.booking?.creator?.name?.toLowerCase().includes(query) ||
+        payment.booking?.campaign?.name?.toLowerCase().includes(query) ||
+        payment.booking?.id?.toString().includes(query) ||
+        payment.amount?.toString().includes(query) ||
+        payment.status?.toLowerCase().includes(query)
+      )
+    }
+
+    // Apply status filter
+    if (statusFilter.length > 0) {
+      filtered = filtered.filter(payment => 
+        statusFilter.includes(payment.status)
+      )
+    }
+
+    setFilteredPayments(filtered)
+  }, [payments, searchQuery, statusFilter])
+
+  // Export function
+  const handleExport = () => {
+    const csvHeaders = 'Creator,Campaign,Booking ID,Amount,Status,Due Date,Created Date\n'
+    const csvData = filteredPayments.map(payment => {
+      const creator = payment.booking?.creator?.name || 'Unknown'
+      const campaign = payment.booking?.campaign?.name || 'Unknown' 
+      const bookingId = payment.booking?.id || ''
+      const dueDate = payment.due_date ? formatDate(payment.due_date) : ''
+      const createdDate = formatDate(payment.created_at)
+      return `"${creator}","${campaign}",${bookingId},${payment.amount},${payment.status},"${dueDate}","${createdDate}"`
+    }).join('\n')
+    
+    const csvContent = csvHeaders + csvData
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    const url = URL.createObjectURL(blob)
+    link.setAttribute('href', url)
+    link.setAttribute('download', `payments-${new Date().toISOString().split('T')[0]}.csv`)
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    
+    toast.success(`Exported ${filteredPayments.length} payments`)
+  }
 
   const getStatusColor = (status: PaymentStatus) => {
     switch (status) {
@@ -77,14 +144,6 @@ export default function PaymentsPage() {
       default: return Clock
     }
   }
-
-  const filteredPayments = selectedStatus === 'all' 
-    ? payments 
-    : payments.filter(p => p.status === selectedStatus)
-
-  const totalPaid = Object.values(paymentTotals).reduce((sum, total) => 
-    sum + (total?.amount || 0), 0
-  )
 
   if (loading) {
     return (
@@ -113,16 +172,57 @@ export default function PaymentsPage() {
                 Track payment status, invoices, and financial management
               </p>
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline" className="gap-2">
-                <Search className="h-4 w-4" />
-                Search
-              </Button>
-              <Button variant="outline" className="gap-2">
-                <Filter className="h-4 w-4" />
-                Filter
-              </Button>
-              <Button variant="outline" className="gap-2">
+            <div className="flex items-center gap-4">
+              <SearchInput 
+                placeholder="Search payments..." 
+                value={searchQuery}
+                onChange={setSearchQuery}
+              />
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline">
+                    <Filter className="h-4 w-4" />
+                    Filter
+                    {statusFilter.length > 0 && (
+                      <span className="ml-1 px-1.5 py-0.5 text-xs bg-primary text-primary-foreground rounded-full">
+                        {statusFilter.length}
+                      </span>
+                    )}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  {PAYMENT_STATUSES.map((status) => {
+                    const StatusIcon = getStatusIcon(status)
+                    return (
+                      <DropdownMenuCheckboxItem
+                        key={status}
+                        checked={statusFilter.includes(status)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setStatusFilter([...statusFilter, status])
+                          } else {
+                            setStatusFilter(statusFilter.filter(s => s !== status))
+                          }
+                        }}
+                      >
+                        <div className="flex items-center gap-2">
+                          <StatusIcon className="h-4 w-4" />
+                          {status.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
+                        </div>
+                      </DropdownMenuCheckboxItem>
+                    )
+                  })}
+                  {statusFilter.length > 0 && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => setStatusFilter([])}>
+                        Clear filters
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Button onClick={handleExport} variant="outline">
                 <Download className="h-4 w-4" />
                 Export
               </Button>
@@ -144,7 +244,10 @@ export default function PaymentsPage() {
               <CreditCard className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{payments.length}</div>
+              <div className="text-2xl font-bold">{filteredPayments.length}</div>
+              <div className="text-xs text-gray-500">
+                of {payments.length} total
+              </div>
             </CardContent>
           </Card>
 
@@ -200,26 +303,6 @@ export default function PaymentsPage() {
           </Card>
         </div>
 
-        {/* Status Filter */}
-        <div className="flex gap-2 mb-6 overflow-x-auto">
-          <Button 
-            variant={selectedStatus === 'all' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setSelectedStatus('all')}
-          >
-            All ({payments.length})
-          </Button>
-          {Object.entries(paymentTotals).map(([status, data]) => (
-            <Button
-              key={status}
-              variant={selectedStatus === status ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setSelectedStatus(status as PaymentStatus)}
-            >
-              {status.replace('_', ' ')} ({data.count})
-            </Button>
-          ))}
-        </div>
 
         {/* Payments Table */}
         {filteredPayments.length === 0 ? (
@@ -229,9 +312,11 @@ export default function PaymentsPage() {
                 <CreditCard className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                 <h3 className="text-lg font-medium text-gray-900 mb-2">No payments found</h3>
                 <p className="text-gray-500 mb-4">
-                  {selectedStatus === 'all' 
+                  {payments.length === 0
                     ? 'No payments have been created yet.'
-                    : `No payments with status "${selectedStatus.replace('_', ' ')}" found.`
+                    : searchQuery || statusFilter.length > 0
+                    ? 'No payments match your current filters.'
+                    : 'No payments found.'
                   }
                 </p>
                 <Button className="gap-2">

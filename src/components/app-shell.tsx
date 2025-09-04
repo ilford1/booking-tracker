@@ -126,11 +126,6 @@ export function AppShell({ children }: AppShellProps) {
 
             {/* Actions */}
             <div className="ml-4 flex items-center md:ml-6 space-x-2">
-              <Button size="sm" className="gap-2">
-                <Plus className="h-4 w-4" />
-                Quick Add
-              </Button>
-              
               <Button variant="ghost" size="icon">
                 <Bell className="h-5 w-5" />
               </Button>

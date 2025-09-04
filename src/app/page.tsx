@@ -7,6 +7,7 @@ import { CampaignDialog } from '@/components/dialogs/campaign-dialog'
 import { CreatorDialog } from '@/components/dialogs/creator-dialog'
 import { BookingDialog } from '@/components/dialogs/booking-dialog'
 import { CalendarWidget } from '@/components/calendar-widget'
+import { ScheduleWidget } from '@/components/schedule-widget'
 import Link from 'next/link'
 import { 
   TrendingUp, 
@@ -115,49 +116,13 @@ export default async function Dashboard() {
           </Card>
         </div>
 
-        {/* Calendar and Activity Section */}
+        {/* Calendar and Schedule Section */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           {/* Calendar Widget */}
           <CalendarWidget className="lg:col-span-2" />
           
-          {/* Quick Actions */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Quick Actions</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-3">
-                <CreatorDialog 
-                  trigger={
-                    <Button variant="outline" className="h-auto p-4 flex flex-col gap-2">
-                      <Users className="h-5 w-5" />
-                      <span className="text-sm">Add Creator</span>
-                    </Button>
-                  }
-                />
-                <CampaignDialog 
-                  trigger={
-                    <Button variant="outline" className="h-auto p-4 flex flex-col gap-2">
-                      <Megaphone className="h-5 w-5" />
-                      <span className="text-sm">New Campaign</span>
-                    </Button>
-                  }
-                />
-                <Button variant="outline" className="h-auto p-4 flex flex-col gap-2" asChild>
-                  <Link href="/calendar">
-                    <Calendar className="h-5 w-5" />
-                    <span className="text-sm">Schedule Post</span>
-                  </Link>
-                </Button>
-                <Button variant="outline" className="h-auto p-4 flex flex-col gap-2" asChild>
-                  <Link href="/payments">
-                    <DollarSign className="h-5 w-5" />
-                    <span className="text-sm">Process Payment</span>
-                  </Link>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+          {/* Schedule Widget */}
+          <ScheduleWidget />
         </div>
 
         {/* Recent Activity */}

@@ -25,6 +25,13 @@ import { getDashboardKPIs, getBookingStatusFunnel } from '@/lib/actions/dashboar
 import { getBookings } from '@/lib/actions/bookings'
 import { getPayments } from '@/lib/actions/payments'
 import { formatCurrency } from '@/lib/utils'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { toast } from 'sonner'
 import type { DashboardKPIs, FunnelData, Booking, Payment } from '@/types'
 import { 
   TrendingUp, 
@@ -46,6 +53,7 @@ export default function ReportsPage() {
   const [bookings, setBookings] = useState<Booking[]>([])
   const [payments, setPayments] = useState<Payment[]>([])
   const [loading, setLoading] = useState(true)
+  const [dateRange, setDateRange] = useState<'7d' | '30d' | '90d' | 'all'>('30d')
 
   useEffect(() => {
     const fetchData = async () => {
@@ -71,8 +79,65 @@ export default function ReportsPage() {
     fetchData()
   }, [])
 
-  // Process data for charts
-  const campaignPerformance = bookings.reduce((acc, booking) => {
+  // Filter data by date range
+  const getDateFilter = () => {
+    if (dateRange === 'all') return () => true
+    const now = new Date()
+    const days = dateRange === '7d' ? 7 : dateRange === '30d' ? 30 : 90
+    const cutoff = new Date(now.getTime() - days * 24 * 60 * 60 * 1000)
+    return (date: string) => new Date(date) >= cutoff
+  }
+
+  const dateFilter = getDateFilter()
+  const filteredBookings = bookings.filter(b => dateFilter(b.created_at))
+  const filteredPayments = payments.filter(p => dateFilter(p.created_at))
+
+  // Export functionality
+  const exportReport = () => {
+    const reportData = {
+      summary: {
+        dateRange,
+        totalBookings: filteredBookings.length,
+        totalRevenue: filteredPayments
+          .filter(p => p.paid_at)
+          .reduce((sum, p) => sum + (p.amount || 0), 0),
+        averageDealSize: filteredBookings.length > 0
+          ? filteredBookings.reduce((sum, b) => sum + (b.agreed_amount || b.offer_amount || 0), 0) / filteredBookings.length
+          : 0,
+        conversionRate: filteredBookings.length > 0
+          ? Math.round((filteredBookings.filter(b => ['posted', 'reported', 'paid'].includes(b.status)).length / filteredBookings.length) * 100)
+          : 0
+      },
+      campaignPerformance: Object.values(filteredBookings.reduce((acc, booking) => {
+        const campaignName = booking.campaign?.name || 'Unknown'
+        if (!acc[campaignName]) {
+          acc[campaignName] = { name: campaignName, bookings: 0, revenue: 0, completed: 0 }
+        }
+        acc[campaignName].bookings += 1
+        acc[campaignName].revenue += booking.agreed_amount || booking.offer_amount || 0
+        if (['posted', 'reported', 'paid'].includes(booking.status)) {
+          acc[campaignName].completed += 1
+        }
+        return acc
+      }, {} as Record<string, any>))
+    }
+
+    const jsonContent = JSON.stringify(reportData, null, 2)
+    const blob = new Blob([jsonContent], { type: 'application/json' })
+    const link = document.createElement('a')
+    const url = URL.createObjectURL(blob)
+    link.setAttribute('href', url)
+    link.setAttribute('download', `report-${dateRange}-${new Date().toISOString().split('T')[0]}.json`)
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    
+    toast.success('Report exported successfully')
+  }
+
+  // Process data for charts using filtered data
+  const campaignPerformance = filteredBookings.reduce((acc, booking) => {
     const campaignName = booking.campaign?.name || 'Unknown'
     if (!acc[campaignName]) {
       acc[campaignName] = { name: campaignName, bookings: 0, revenue: 0, completed: 0 }
@@ -87,7 +152,7 @@ export default function ReportsPage() {
 
   const campaignData = Object.values(campaignPerformance)
 
-  const monthlyRevenue = payments
+  const monthlyRevenue = filteredPayments
     .filter(p => p.paid_at)
     .reduce((acc, payment) => {
       const month = new Date(payment.paid_at!).toISOString().slice(0, 7)
@@ -101,7 +166,7 @@ export default function ReportsPage() {
 
   const revenueData = Object.values(monthlyRevenue).sort((a, b) => a.month.localeCompare(b.month))
 
-  const platformData = bookings.reduce((acc, booking) => {
+  const platformData = filteredBookings.reduce((acc, booking) => {
     const platform = booking.creator?.platform || 'other'
     if (!acc[platform]) {
       acc[platform] = { name: platform, value: 0, bookings: 0 }
@@ -141,11 +206,29 @@ export default function ReportsPage() {
               </p>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" className="gap-2">
-                <Filter className="h-4 w-4" />
-                Filter
-              </Button>
-              <Button variant="outline" className="gap-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="gap-2">
+                    <Filter className="h-4 w-4" />
+                    Filter: {dateRange === '7d' ? 'Last 7 days' : dateRange === '30d' ? 'Last 30 days' : dateRange === '90d' ? 'Last 90 days' : 'All time'}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setDateRange('7d')}>
+                    Last 7 days
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setDateRange('30d')}>
+                    Last 30 days
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setDateRange('90d')}>
+                    Last 90 days
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setDateRange('all')}>
+                    All time
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Button onClick={exportReport} variant="outline" className="gap-2">
                 <Download className="h-4 w-4" />
                 Export Report
               </Button>
@@ -182,8 +265,8 @@ export default function ReportsPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {bookings.length > 0 
-                  ? Math.round((bookings.filter(b => ['posted', 'reported', 'paid'].includes(b.status)).length / bookings.length) * 100)
+                {filteredBookings.length > 0 
+                  ? Math.round((filteredBookings.filter(b => ['posted', 'reported', 'paid'].includes(b.status)).length / filteredBookings.length) * 100)
                   : 0
                 }%
               </div>
@@ -203,9 +286,9 @@ export default function ReportsPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {bookings.length > 0
+                {filteredBookings.length > 0
                   ? formatCurrency(
-                      bookings.reduce((sum, b) => sum + (b.agreed_amount || b.offer_amount || 0), 0) / bookings.length
+                      filteredBookings.reduce((sum, b) => sum + (b.agreed_amount || b.offer_amount || 0), 0) / filteredBookings.length
                     )
                   : formatCurrency(0)
                 }
@@ -226,7 +309,7 @@ export default function ReportsPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {new Set(bookings.map(b => b.creator_id)).size}
+                {new Set(filteredBookings.map(b => b.creator_id)).size}
               </div>
               <div className="flex items-center text-xs text-green-600">
                 <TrendingUp className="h-3 w-3 mr-1" />

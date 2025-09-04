@@ -12,6 +12,7 @@ import { CampaignDialog } from '@/components/dialogs/campaign-dialog'
 import { BookingDialog } from '@/components/dialogs/booking-dialog'
 import { DetailsDialog } from '@/components/dialogs/details-dialog'
 import { SearchInput } from '@/components/search-input'
+import { toast } from 'sonner'
 import { 
   Plus, 
   Search, 
@@ -19,7 +20,8 @@ import {
   Calendar,
   DollarSign,
   Target,
-  Clock
+  Clock,
+  Download
 } from 'lucide-react'
 
 export default function CampaignsPage() {
@@ -67,6 +69,36 @@ export default function CampaignsPage() {
 
   const handleCampaignSuccess = () => {
     setRefreshKey(prev => prev + 1)
+  }
+
+  const handleExport = () => {
+    const csvData = filteredCampaigns.map(campaign => ({
+      Name: campaign.name,
+      Slug: campaign.slug || '',
+      Objective: campaign.objective || '',
+      Budget: campaign.budget || 0,
+      'Start Date': campaign.start_date || '',
+      'End Date': campaign.end_date || '',
+      Tags: campaign.tags ? campaign.tags.join(', ') : '',
+      'Default Brief': campaign.default_brief || '',
+      Created: campaign.created_at
+    }))
+    
+    const csvContent = [
+      Object.keys(csvData[0]).join(','),
+      ...csvData.map(row => Object.values(row).map(val => 
+        typeof val === 'string' && val.includes(',') ? `"${val}"` : val
+      ).join(','))
+    ].join('\n')
+    
+    const blob = new Blob([csvContent], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `campaigns-${new Date().toISOString().split('T')[0]}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+    toast.success('Campaigns exported successfully!')
   }
 
   const getCampaignStatus = (campaign: any) => {
@@ -117,6 +149,10 @@ export default function CampaignsPage() {
                 placeholder="Search campaigns..."
                 className="w-64"
               />
+              <Button variant="outline" className="gap-2" onClick={handleExport}>
+                <Download className="h-4 w-4" />
+                Export
+              </Button>
               <CampaignDialog onSuccess={handleCampaignSuccess} />
             </div>
           </div>
