@@ -55,8 +55,48 @@ Designed specifically for Vietnamese fashion brands managing KOL collaborations 
 - Content deliverable management
 - Payment processing workflow
 
+## 🚀 Recent Updates (January 2025)
+
+### ✅ Fixed Issues:
+- **Resolved Supabase SSR Integration**: Fixed "TypeError: fetch failed" errors across all pages
+- **Next.js 15 Compatibility**: Implemented proper server-side rendering with `@supabase/ssr`
+- **Database Schema**: Completed full migration with 8 production-ready tables
+- **Action Files**: Updated all server actions to use proper SSR clients
+
+### 🗄️ Database Schema:
+- **campaigns** - Marketing campaign management
+- **creators** - KOL/influencer profiles
+- **bookings** - Campaign-creator relationships
+- **deliverables** - Content submissions and tracking
+- **payments** - Payment processing and status
+- **sendouts** - Product shipment management
+- **metrics** - Performance analytics
+- **files** - Asset storage and management
+
+### 🔧 Technical Improvements:
+- Added proper cookie-based session management
+- Implemented Row Level Security (RLS) policies
+- Created auto-updating timestamps with triggers
+- Added database indexes for optimal performance
+- Included sample data for immediate testing
+
 ## 🚀 Getting Started
 
+### For Development:
+```bash
+git clone https://github.com/ilford1/booking-tracker.git
+cd booking-tracker
+npm install
+npm run dev
+```
+
+### Database Setup:
+1. Create a Supabase project
+2. Run the migration script from `database_migration.sql`
+3. Update your `.env` file with Supabase credentials
+4. Application is ready with sample data!
+
+### Live Demo:
 1. Visit the live application
 2. Explore the creator directory
 3. View campaign progress
