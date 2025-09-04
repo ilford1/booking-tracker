@@ -1,12 +1,8 @@
 {
+  "regions": ["sin1"],
   "functions": {
-    "app/api/**/*.ts": {
-      "runtime": "@vercel/node",
-      "regions": ["sin1", "hkg1", "bom1"]
-    },
-    "app/**/*.tsx": {
-      "runtime": "@vercel/node", 
-      "regions": ["sin1", "hkg1", "bom1"]
+    "src/app/api/**/*.ts": {
+      "maxDuration": 30
     }
   },
   "headers": [
