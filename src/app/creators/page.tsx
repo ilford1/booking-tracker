@@ -5,7 +5,26 @@ import { AppShell } from '@/components/app-shell'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { getCreators } from '@/lib/actions/creators'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
+import { getCreators, deleteCreator } from '@/lib/actions/creators'
 import { formatCurrency } from '@/lib/utils'
 import type { Creator } from '@/types'
 import { CreatorDialog } from '@/components/dialogs/creator-dialog'
@@ -20,7 +39,11 @@ import {
   ExternalLink,
   Instagram,
   MessageCircle,
-  Download
+  Download,
+  Grid3X3,
+  List,
+  Trash2,
+  Edit
 } from 'lucide-react'
 
 export default function CreatorsPage() {
@@ -30,6 +53,8 @@ export default function CreatorsPage() {
   const [refreshKey, setRefreshKey] = useState(0)
   const [searchQuery, setSearchQuery] = useState('')
   const [platformFilter, setPlatformFilter] = useState('')
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid')
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -71,6 +96,20 @@ export default function CreatorsPage() {
 
   const handleCreatorSuccess = () => {
     setRefreshKey(prev => prev + 1)
+  }
+
+  const handleDelete = async (id: string, name: string) => {
+    setDeletingId(id)
+    try {
+      await deleteCreator(id)
+      toast.success(`Deleted ${name} successfully`)
+      setRefreshKey(prev => prev + 1)
+    } catch (error) {
+      toast.error('Failed to delete creator')
+      console.error('Delete error:', error)
+    } finally {
+      setDeletingId(null)
+    }
   }
 
   const handleExport = () => {
@@ -161,6 +200,24 @@ export default function CreatorsPage() {
                 <option value="facebook">Facebook</option>
                 <option value="other">Other</option>
               </select>
+              <div className="flex border border-input rounded-md">
+                <Button
+                  variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('grid')}
+                  className="rounded-r-none border-r"
+                >
+                  <Grid3X3 className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant={viewMode === 'table' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('table')}
+                  className="rounded-l-none"
+                >
+                  <List className="h-4 w-4" />
+                </Button>
+              </div>
               <Button variant="outline" className="gap-2" onClick={handleExport}>
                 <Download className="h-4 w-4" />
                 Export
@@ -226,7 +283,7 @@ export default function CreatorsPage() {
           </Card>
         </div>
 
-        {/* Creators Grid */}
+        {/* Creators Display */}
         {creators.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
@@ -253,6 +310,126 @@ export default function CreatorsPage() {
               Clear Filters
             </Button>
           </div>
+        ) : viewMode === 'table' ? (
+          <Card>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Creator</TableHead>
+                    <TableHead>Platform</TableHead>
+                    <TableHead>Followers</TableHead>
+                    <TableHead>Engagement</TableHead>
+                    <TableHead>Rate</TableHead>
+                    <TableHead>Contact</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredCreators.map((creator) => (
+                    <TableRow key={creator.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <div>
+                            <div className="font-medium">{creator.name}</div>
+                            <div className="text-sm text-gray-500">{creator.handle}</div>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          {creator.platform && getPlatformIcon(creator.platform)}
+                          <Badge variant="secondary" className="capitalize">
+                            {creator.platform || 'other'}
+                          </Badge>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="font-medium">
+                          {creator.followers?.toLocaleString() || '0'}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          <div>👁️ {creator.avg_views?.toLocaleString() || '0'}</div>
+                          <div>❤️ {creator.avg_likes?.toLocaleString() || '0'}</div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {creator.rate_card ? (
+                          <div className="text-sm">
+                            {Object.entries(creator.rate_card).slice(0, 2).map(([type, rate]) => (
+                              <div key={type}>
+                                {formatCurrency(rate as number)}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          {creator.email && <div>📧 {creator.email}</div>}
+                          {creator.phone && <div>📱 {creator.phone}</div>}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-1">
+                          <DetailsDialog 
+                            data={creator}
+                            type="creator"
+                            trigger={
+                              <Button variant="outline" size="sm">
+                                View
+                              </Button>
+                            }
+                          />
+                          <BookingDialog 
+                            prefilledCreatorId={creator.id}
+                            onSuccess={handleCreatorSuccess}
+                            trigger={
+                              <Button size="sm">
+                                Book
+                              </Button>
+                            }
+                          />
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                disabled={deletingId === creator.id}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Creator</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure you want to delete {creator.name}? This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleDelete(creator.id, creator.name)}
+                                  className="bg-red-600 hover:bg-red-700"
+                                >
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
         ) : (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {filteredCreators.map((creator) => (
@@ -268,9 +445,40 @@ export default function CreatorsPage() {
                         </span>
                       </div>
                     </div>
-                    <Badge variant="secondary" className="capitalize">
-                      {creator.platform || 'other'}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary" className="capitalize">
+                        {creator.platform || 'other'}
+                      </Badge>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            disabled={deletingId === creator.id}
+                            className="p-2"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Creator</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to delete {creator.name}? This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDelete(creator.id, creator.name)}
+                              className="bg-red-600 hover:bg-red-700"
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
                   </div>
                 </CardHeader>
                 

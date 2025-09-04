@@ -119,11 +119,12 @@ export type Payment = {
   booking_id?: string | null
   status: PaymentStatus
   amount?: number | null
+  currency?: string | null
+  payment_method?: string | null
+  transaction_id?: string | null
+  notes?: string | null
   due_date?: string | null
   paid_at?: string | null
-  invoice_url?: string | null
-  receipt_url?: string | null
-  method?: 'bank' | 'cash' | 'transfer' | 'other' | null
   actor: string
   created_at: string
   updated_at: string

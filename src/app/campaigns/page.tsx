@@ -5,7 +5,18 @@ import { AppShell } from '@/components/app-shell'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { getCampaigns, getActiveCampaigns } from '@/lib/actions/campaigns'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
+import { getCampaigns, getActiveCampaigns, deleteCampaign } from '@/lib/actions/campaigns'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import type { Campaign } from '@/types'
 import { CampaignDialog } from '@/components/dialogs/campaign-dialog'
@@ -21,7 +32,8 @@ import {
   DollarSign,
   Target,
   Clock,
-  Download
+  Download,
+  Trash2
 } from 'lucide-react'
 
 export default function CampaignsPage() {
@@ -31,6 +43,7 @@ export default function CampaignsPage() {
   const [loading, setLoading] = useState(true)
   const [refreshKey, setRefreshKey] = useState(0)
   const [searchQuery, setSearchQuery] = useState('')
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -69,6 +82,20 @@ export default function CampaignsPage() {
 
   const handleCampaignSuccess = () => {
     setRefreshKey(prev => prev + 1)
+  }
+
+  const handleDelete = async (id: string, name: string) => {
+    setDeletingId(id)
+    try {
+      await deleteCampaign(id)
+      toast.success(`Deleted ${name} successfully`)
+      setRefreshKey(prev => prev + 1)
+    } catch (error) {
+      toast.error('Failed to delete campaign')
+      console.error('Delete error:', error)
+    } finally {
+      setDeletingId(null)
+    }
   }
 
   const handleExport = () => {
@@ -353,6 +380,35 @@ export default function CampaignsPage() {
                           </Button>
                         }
                       />
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            disabled={deletingId === campaign.id}
+                            className="p-2"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Campaign</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to delete "{campaign.name}"? This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDelete(campaign.id, campaign.name)}
+                              className="bg-red-600 hover:bg-red-700"
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                   </CardContent>
                 </Card>

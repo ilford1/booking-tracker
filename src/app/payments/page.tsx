@@ -24,6 +24,7 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
+import { PaymentViewDialog, PaymentEditDialog } from '@/components/dialogs/payment-dialog'
 import { toast } from 'sonner'
 import type { Payment, PaymentStatus } from '@/types'
 import { 
@@ -48,6 +49,7 @@ export default function PaymentsPage() {
   const [filteredPayments, setFilteredPayments] = useState<Payment[]>([])
   const [paymentTotals, setPaymentTotals] = useState<Record<PaymentStatus, { count: number; amount: number }>>({} as any)
   const [loading, setLoading] = useState(true)
+  const [refreshKey, setRefreshKey] = useState(0)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<PaymentStatus[]>([])
 
@@ -69,7 +71,11 @@ export default function PaymentsPage() {
     }
     
     fetchData()
-  }, [])
+  }, [refreshKey])
+
+  const handlePaymentUpdate = () => {
+    setRefreshKey(prev => prev + 1)
+  }
 
   // Filter payments based on search and status
   useEffect(() => {
@@ -368,7 +374,7 @@ export default function PaymentsPage() {
                           </div>
                         </TableCell>
                         <TableCell className="capitalize">
-                          {payment.method || '-'}
+                          {payment.payment_method || '-'}
                         </TableCell>
                         <TableCell>
                           {payment.due_date ? formatDate(payment.due_date) : '-'}
@@ -378,12 +384,24 @@ export default function PaymentsPage() {
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-2">
-                            <Button variant="outline" size="sm">
-                              View
-                            </Button>
-                            <Button size="sm">
-                              Edit
-                            </Button>
+                            <PaymentViewDialog
+                              payment={payment}
+                              onUpdate={handlePaymentUpdate}
+                              trigger={
+                                <Button variant="outline" size="sm">
+                                  View
+                                </Button>
+                              }
+                            />
+                            <PaymentEditDialog
+                              payment={payment}
+                              onUpdate={handlePaymentUpdate}
+                              trigger={
+                                <Button size="sm">
+                                  Edit
+                                </Button>
+                              }
+                            />
                           </div>
                         </TableCell>
                       </TableRow>
