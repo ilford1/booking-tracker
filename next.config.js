@@ -13,8 +13,6 @@ const nextConfig = {
       bodySizeLimit: '2mb'
     }
   },
-  // Optimize for Vercel deployment
-  swcMinify: true,
   // Ensure proper handling of async components
   reactStrictMode: true,
   // Add webpack configuration to handle node-fetch
