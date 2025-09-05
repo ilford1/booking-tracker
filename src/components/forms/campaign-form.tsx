@@ -20,18 +20,24 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { createCampaign, updateCampaign } from '@/lib/actions/campaigns'
+import { getBrands, addBrand, type Brand } from '@/lib/brands'
+import { getCreators } from '@/lib/actions/creators'
+import { createBooking } from '@/lib/actions/bookings'
 import { toast } from 'sonner'
+import type { Creator } from '@/types'
 import { Loader2, Plus, X } from 'lucide-react'
 
 const campaignFormSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   slug: z.string().min(2, 'Slug must be at least 2 characters'),
+  brand: z.string().min(2, 'Brand must be at least 2 characters'),
   objective: z.string().optional(),
   budget: z.number().min(0).optional(),
   start_date: z.string().optional(),
   end_date: z.string().optional(),
   default_brief: z.string().optional(),
-  tags: z.array(z.string()).optional(),
+  selected_creators: z.array(z.string()).optional(),
+  // tags: z.array(z.string()).optional(), // Removed tags field
 })
 
 type CampaignFormValues = z.infer<typeof campaignFormSchema>
@@ -57,27 +63,65 @@ const OBJECTIVES = [
   'Community Building',
   'Content Creation',
   'Traffic Drive',
-  'App Downloads',
   'Other'
 ]
 
 export function CampaignForm({ onSuccess, onCancel, initialData }: CampaignFormProps) {
   const [isSubmitting, setIsSubmitting] = React.useState(false)
+  const [brands, setBrands] = React.useState<Brand[]>([])
+  const [newBrandName, setNewBrandName] = React.useState('')
+  const [showAddBrand, setShowAddBrand] = React.useState(false)
+  const [creators, setCreators] = React.useState<Creator[]>([])
+  const [loadingCreators, setLoadingCreators] = React.useState(false)
 
   const form = useForm<CampaignFormValues>({
     resolver: zodResolver(campaignFormSchema),
     defaultValues: {
       name: '',
       slug: '',
+      brand: '',
       objective: '',
       budget: undefined,
       start_date: '',
       end_date: '',
       default_brief: '',
-      tags: [],
+      selected_creators: [],
+      // tags: [], // Removed tags field
       ...initialData,
     },
   })
+
+  // Load brands and creators on component mount
+  React.useEffect(() => {
+    setBrands(getBrands())
+    
+    const loadCreators = async () => {
+      try {
+        setLoadingCreators(true)
+        const creatorsData = await getCreators()
+        setCreators(creatorsData)
+      } catch (error) {
+        console.error('Error loading creators:', error)
+        toast.error('Failed to load creators')
+      } finally {
+        setLoadingCreators(false)
+      }
+    }
+    
+    loadCreators()
+  }, [])
+
+  // Handle adding new brand
+  const handleAddBrand = () => {
+    if (newBrandName.trim()) {
+      const updatedBrands = addBrand(newBrandName)
+      setBrands(updatedBrands)
+      form.setValue('brand', newBrandName.trim())
+      setNewBrandName('')
+      setShowAddBrand(false)
+      toast.success('Brand added successfully!')
+    }
+  }
 
   const onSubmit = async (data: CampaignFormValues) => {
     try {
@@ -86,20 +130,39 @@ export function CampaignForm({ onSuccess, onCancel, initialData }: CampaignFormP
       const campaignData = {
         name: data.name,
         slug: data.slug || data.name.toLowerCase().replace(/\s+/g, '-'),
+        brand: data.brand || 'Default Brand', // Include brand field
         objective: data.objective || null,
         budget: data.budget || null,
         start_date: data.start_date || null,
         end_date: data.end_date || null,
         default_brief: data.default_brief || null,
-        tags: data.tags && data.tags.length > 0 ? data.tags : null,
+        tags: null, // Tags field removed
       }
 
+      let createdCampaign
       if (initialData?.id) {
-        await updateCampaign(initialData.id, campaignData)
+        createdCampaign = await updateCampaign(initialData.id, campaignData)
         toast.success('Campaign updated successfully!')
       } else {
-        await createCampaign(campaignData)
+        createdCampaign = await createCampaign(campaignData)
         toast.success('Campaign created successfully!')
+        
+        // Create bookings for selected creators
+        if (data.selected_creators && data.selected_creators.length > 0) {
+          for (const creatorId of data.selected_creators) {
+            try {
+              await createBooking({
+                campaign_id: createdCampaign.id,
+                creator_id: creatorId,
+                status: 'prospect',
+                currency: 'VND'
+              })
+            } catch (error) {
+              console.error(`Error creating booking for creator ${creatorId}:`, error)
+            }
+          }
+          toast.success(`Created bookings for ${data.selected_creators.length} creators!`)
+        }
       }
       
       onSuccess?.()
@@ -111,17 +174,9 @@ export function CampaignForm({ onSuccess, onCancel, initialData }: CampaignFormP
     }
   }
 
-  const addTag = (tag: string) => {
-    const currentTags = form.getValues('tags') || []
-    if (!currentTags.includes(tag)) {
-      form.setValue('tags', [...currentTags, tag])
-    }
-  }
-
-  const removeTag = (tag: string) => {
-    const currentTags = form.getValues('tags') || []
-    form.setValue('tags', currentTags.filter(t => t !== tag))
-  }
+  // Tag functions removed since tags field was removed
+  // const addTag = (tag: string) => { ... }
+  // const removeTag = (tag: string) => { ... }
 
   // Generate slug from name
   const generateSlug = () => {
@@ -192,6 +247,80 @@ export function CampaignForm({ onSuccess, onCancel, initialData }: CampaignFormP
               />
             </div>
 
+            <FormField
+              control={form.control}
+              name="brand"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Brand *</FormLabel>
+                  <div className="flex gap-2">
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="flex-1">
+                          <SelectValue placeholder="Select brand" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {brands.length === 0 ? (
+                          <div className="p-2 text-sm text-gray-500 text-center">
+                            No brands available. Add one using the + button.
+                          </div>
+                        ) : (
+                          brands.map((brand) => (
+                            <SelectItem key={brand.id} value={brand.name}>
+                              {brand.name}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={() => setShowAddBrand(!showAddBrand)}
+                      className="px-3"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  
+                  {showAddBrand && (
+                    <div className="flex gap-2 mt-2">
+                      <Input
+                        placeholder="New brand name"
+                        value={newBrandName}
+                        onChange={(e) => setNewBrandName(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && handleAddBrand()}
+                        className="flex-1"
+                      />
+                      <Button 
+                        type="button" 
+                        onClick={handleAddBrand}
+                        disabled={!newBrandName.trim()}
+                        size="sm"
+                      >
+                        Add
+                      </Button>
+                      <Button 
+                        type="button" 
+                        variant="outline"
+                        onClick={() => {
+                          setShowAddBrand(false)
+                          setNewBrandName('')
+                        }}
+                        size="sm"
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  )}
+                  
+                  <FormDescription>Select a brand or add a new one</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -223,11 +352,11 @@ export function CampaignForm({ onSuccess, onCancel, initialData }: CampaignFormP
                 name="budget"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Budget ($)</FormLabel>
+                    <FormLabel>Budget (₫)</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
-                        placeholder="10000"
+                        placeholder="100000000"
                         {...field}
                         value={field.value || ''}
                         onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
@@ -298,43 +427,74 @@ export function CampaignForm({ onSuccess, onCancel, initialData }: CampaignFormP
               )}
             />
 
+            {/* Tags field removed per request */}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Creator Selection</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
             <FormField
               control={form.control}
-              name="tags"
+              name="selected_creators"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Tags</FormLabel>
-                  <div className="flex flex-wrap gap-2 mb-2">
-                    {(field.value || []).map((tag) => (
-                      <Badge key={tag} variant="secondary" className="gap-1">
-                        {tag}
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="ghost"
-                          className="h-auto p-0 text-gray-500 hover:text-red-600"
-                          onClick={() => removeTag(tag)}
-                        >
-                          <X className="h-3 w-3" />
-                        </Button>
-                      </Badge>
-                    ))}
-                  </div>
-                  <Select onValueChange={addTag}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Add tag" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CAMPAIGN_TAGS.filter(tag => !(field.value || []).includes(tag)).map((tag) => (
-                        <SelectItem key={tag} value={tag}>
-                          {tag}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <FormLabel>Select Creators (Optional)</FormLabel>
                   <FormDescription>
-                    Tags help organize and categorize your campaigns.
+                    Select creators to automatically create bookings when the campaign is created.
                   </FormDescription>
+                  
+                  {loadingCreators ? (
+                    <div className="text-center py-4">
+                      <Loader2 className="h-6 w-6 animate-spin mx-auto" />
+                      <p className="text-sm text-gray-500 mt-2">Loading creators...</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-64 overflow-y-auto border rounded-lg p-3">
+                      {creators.map((creator) => (
+                        <div key={creator.id} className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            id={creator.id}
+                            checked={field.value?.includes(creator.id) || false}
+                            onChange={(e) => {
+                              const current = field.value || []
+                              if (e.target.checked) {
+                                field.onChange([...current, creator.id])
+                              } else {
+                                field.onChange(current.filter(id => id !== creator.id))
+                              }
+                            }}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <label 
+                            htmlFor={creator.id} 
+                            className="text-sm font-medium cursor-pointer flex-1 truncate"
+                            title={`${creator.name} (${creator.handle})`}
+                          >
+                            {creator.name}
+                            <span className="text-gray-500 text-xs block">{creator.handle}</span>
+                          </label>
+                        </div>
+                      ))}
+                      
+                      {creators.length === 0 && (
+                        <div className="col-span-full text-center py-4 text-gray-500">
+                          No creators available. Add some creators first.
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  {field.value && field.value.length > 0 && (
+                    <p className="text-sm text-blue-600">
+                      {field.value.length} creator{field.value.length === 1 ? '' : 's'} selected
+                    </p>
+                  )}
+                  
+                  <FormMessage />
                 </FormItem>
               )}
             />

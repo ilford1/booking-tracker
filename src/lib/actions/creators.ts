@@ -40,15 +40,16 @@ export async function createCreator(creatorData: CreateCreatorData) {
   const { data, error } = await supabase
     .from('creators')
     .insert({
-      ...creatorData,
-      actor: 'system' // Could be replaced with actual user when auth is added
+      ...creatorData
+      // Removed actor field - not in schema cache
     })
     .select()
     .single()
 
   if (error) {
     console.error('Error creating creator:', error)
-    throw new Error('Failed to create creator')
+    console.error('Creator data being inserted:', { ...creatorData })
+    throw new Error(`Failed to create creator: ${error.message || error.code || 'Unknown error'}`)
   }
 
   revalidatePath('/creators')
@@ -60,8 +61,8 @@ export async function updateCreator(id: string, creatorData: UpdateCreatorData) 
   const { data, error } = await supabase
     .from('creators')
     .update({
-      ...creatorData,
-      actor: 'system'
+      ...creatorData
+      // Removed actor field
     })
     .eq('id', id)
     .select()

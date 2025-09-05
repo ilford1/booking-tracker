@@ -350,23 +350,7 @@ export default function CampaignsPage() {
                       </span>
                     </div>
 
-                    {/* Tags */}
-                    {campaign.tags && campaign.tags.length > 0 && (
-                      <div className="mb-4">
-                        <div className="flex flex-wrap gap-1">
-                          {campaign.tags.slice(0, 4).map((tag) => (
-                            <Badge key={tag} variant="outline" className="text-xs">
-                              {tag}
-                            </Badge>
-                          ))}
-                          {campaign.tags.length > 4 && (
-                            <Badge variant="outline" className="text-xs">
-                              +{campaign.tags.length - 4}
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                    )}
+                    {/* Tags section removed */}
 
                     {/* Brief Preview */}
                     {campaign.default_brief && (

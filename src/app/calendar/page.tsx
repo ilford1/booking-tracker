@@ -16,14 +16,32 @@ import {
   Calendar as CalendarIcon,
   Clock,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Plus,
+  Edit,
+  Trash2,
+  MoreVertical
 } from 'lucide-react'
+import { 
+  DeliverableDialog, 
+  DeleteDeliverableDialog,
+  QuickAddDeliverableDialog 
+} from '@/components/dialogs/deliverable-dialog'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
 export default function CalendarPage() {
   const [deliverables, setDeliverables] = useState<Deliverable[]>([])
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
   const [loading, setLoading] = useState(true)
   const [viewMode, setViewMode] = useState<'month' | 'week' | 'day'>('month')
+  const [refreshKey, setRefreshKey] = useState(0)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -38,7 +56,11 @@ export default function CalendarPage() {
     }
     
     fetchData()
-  }, [])
+  }, [refreshKey])
+
+  const handleRefresh = () => {
+    setRefreshKey(prev => prev + 1)
+  }
 
   const getDeliverablesForDate = (date: Date) => {
     return deliverables.filter(deliverable => 
@@ -96,6 +118,15 @@ export default function CalendarPage() {
               </p>
             </div>
             <div className="flex gap-2">
+              <DeliverableDialog 
+                onSuccess={handleRefresh}
+                trigger={
+                  <Button className="gap-2">
+                    <Plus className="h-4 w-4" />
+                    Add Deliverable
+                  </Button>
+                }
+              />
               <Button 
                 variant={viewMode === 'month' ? 'default' : 'outline'} 
                 size="sm"
@@ -171,12 +202,18 @@ export default function CalendarPage() {
                   {format(selectedDate, 'EEEE, MMMM d, yyyy')}
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                {selectedDateDeliverables.length === 0 ? (
-                  <div className="text-center py-6">
-                    <CalendarIcon className="h-12 w-12 text-gray-400 mx-auto mb-2" />
-                    <p className="text-gray-500">No deliverables scheduled</p>
-                  </div>
+          <CardContent>
+            {selectedDateDeliverables.length === 0 ? (
+              <div className="text-center py-6">
+                <CalendarIcon className="h-12 w-12 text-gray-400 mx-auto mb-2" />
+                <p className="text-gray-500">No deliverables scheduled</p>
+                <div className="mt-4">
+                  <QuickAddDeliverableDialog 
+                    date={selectedDate}
+                    onSuccess={handleRefresh}
+                  />
+                </div>
+              </div>
                 ) : (
                   <div className="space-y-3">
                     {selectedDateDeliverables.map((deliverable) => {
@@ -184,7 +221,7 @@ export default function CalendarPage() {
                       return (
                         <div 
                           key={deliverable.id}
-                          className="p-3 border rounded-lg hover:bg-gray-50"
+                          className="p-3 border rounded-lg hover:bg-gray-50 group"
                         >
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
@@ -208,6 +245,50 @@ export default function CalendarPage() {
                                 </Badge>
                               </div>
                             </div>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon"
+                                  className="opacity-0 group-hover:opacity-100 transition-opacity"
+                                >
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem asChild>
+                                  <div className="w-full">
+                                    <DeliverableDialog
+                                      deliverable={deliverable}
+                                      mode="edit"
+                                      onSuccess={handleRefresh}
+                                      trigger={
+                                        <div className="flex items-center cursor-pointer w-full">
+                                          <Edit className="h-4 w-4 mr-2" />
+                                          Edit
+                                        </div>
+                                      }
+                                    />
+                                  </div>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem asChild>
+                                  <div className="w-full">
+                                    <DeleteDeliverableDialog
+                                      deliverable={deliverable}
+                                      onSuccess={handleRefresh}
+                                      trigger={
+                                        <div className="flex items-center cursor-pointer w-full text-red-600">
+                                          <Trash2 className="h-4 w-4 mr-2" />
+                                          Delete
+                                        </div>
+                                      }
+                                    />
+                                  </div>
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
                           {deliverable.notes && (
                             <p className="text-xs text-gray-500 mt-2">
@@ -224,8 +305,15 @@ export default function CalendarPage() {
 
             {/* Upcoming Deliverables */}
             <Card className="mt-6">
-              <CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>Upcoming This Week</CardTitle>
+                <Button 
+                  size="sm" 
+                  variant="ghost"
+                  onClick={handleRefresh}
+                >
+                  Refresh
+                </Button>
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">

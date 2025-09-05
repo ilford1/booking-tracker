@@ -181,7 +181,6 @@ export function CampaignsTable({ campaigns, onDelete, onSuccess, deletingId }: C
                 {getSortIcon('end_date')}
               </Button>
             </TableHead>
-            <TableHead>Tags</TableHead>
             <TableHead>
               <Button
                 variant="ghost"
@@ -256,25 +255,6 @@ export function CampaignsTable({ campaigns, onDelete, onSuccess, deletingId }: C
                       <span className="text-sm">
                         {formatDate(campaign.end_date)}
                       </span>
-                    </div>
-                  ) : (
-                    <span className="text-gray-500">—</span>
-                  )}
-                </TableCell>
-                
-                <TableCell>
-                  {campaign.tags && campaign.tags.length > 0 ? (
-                    <div className="flex flex-wrap gap-1">
-                      {campaign.tags.slice(0, 2).map((tag) => (
-                        <Badge key={tag} variant="outline" className="text-xs">
-                          {tag}
-                        </Badge>
-                      ))}
-                      {campaign.tags.length > 2 && (
-                        <Badge variant="outline" className="text-xs">
-                          +{campaign.tags.length - 2}
-                        </Badge>
-                      )}
                     </div>
                   ) : (
                     <span className="text-gray-500">—</span>

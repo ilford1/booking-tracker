@@ -70,7 +70,7 @@ export function BookingForm({
       status: 'prospect',
       offer_amount: undefined,
       agreed_amount: undefined,
-      currency: 'USD',
+      currency: 'VND',
       contract_url: '',
       brief: '',
       contact_channel: undefined,
@@ -276,6 +276,7 @@ export function BookingForm({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
+                        <SelectItem value="VND">VND - Vietnamese Dong</SelectItem>
                         <SelectItem value="USD">USD - US Dollar</SelectItem>
                         <SelectItem value="EUR">EUR - Euro</SelectItem>
                         <SelectItem value="GBP">GBP - British Pound</SelectItem>
@@ -307,7 +308,7 @@ export function BookingForm({
                     <FormControl>
                       <Input
                         type="number"
-                        placeholder="500"
+                        placeholder="5000000"
                         {...field}
                         value={field.value || ''}
                         onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
@@ -330,7 +331,7 @@ export function BookingForm({
                     <FormControl>
                       <Input
                         type="number"
-                        placeholder="600"
+                        placeholder="6000000"
                         {...field}
                         value={field.value || ''}
                         onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}

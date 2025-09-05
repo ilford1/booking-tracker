@@ -48,8 +48,8 @@ export async function createBooking(bookingData: CreateBookingData) {
   const { data, error } = await supabase
     .from('bookings')
     .insert({
-      ...bookingData,
-      actor: 'system'
+      ...bookingData
+      // Removed actor field - not needed if it has a default value
     })
     .select(`
       *,
@@ -60,7 +60,8 @@ export async function createBooking(bookingData: CreateBookingData) {
 
   if (error) {
     console.error('Error creating booking:', error)
-    throw new Error('Failed to create booking')
+    console.error('Booking data being inserted:', { ...bookingData, actor: 'system' })
+    throw new Error(`Failed to create booking: ${error.message || error.code || 'Unknown error'}`)
   }
 
   revalidatePath('/bookings')
@@ -72,8 +73,8 @@ export async function updateBooking(id: string, bookingData: UpdateBookingData) 
   const { data, error } = await supabase
     .from('bookings')
     .update({
-      ...bookingData,
-      actor: 'system'
+      ...bookingData
+      // Removed actor field
     })
     .eq('id', id)
     .select(`
@@ -98,8 +99,8 @@ export async function updateBookingStatus(id: string, status: BookingStatus) {
   const { data, error } = await supabase
     .from('bookings')
     .update({
-      status,
-      actor: 'system'
+      status
+      // Removed actor field
     })
     .eq('id', id)
     .select(`

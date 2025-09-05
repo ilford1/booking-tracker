@@ -179,7 +179,7 @@ export function useGlobalSearch() {
             id: 'campaign-summer',
             type: 'campaign',
             title: 'Summer Sale 2024',
-            description: 'Fashion campaign • $50K budget',
+            description: 'Fashion campaign • ₫1.15B budget',
             url: '/campaigns',
             data: { name: 'Summer Sale 2024' }
           },
@@ -187,7 +187,7 @@ export function useGlobalSearch() {
             id: 'campaign-tech',
             type: 'campaign',
             title: 'Tech Product Launch',
-            description: 'Product launch • $75K budget',
+            description: 'Product launch • ₫1.73B budget',
             url: '/campaigns',
             data: { name: 'Tech Product Launch' }
           }

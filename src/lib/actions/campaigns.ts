@@ -65,14 +65,16 @@ export async function createCampaign(campaignData: CreateCampaignData) {
     .insert({
       ...campaignData,
       slug,
-      actor: 'system'
+      brand: campaignData.brand || '' // Ensure brand is not null
+      // Removed actor field
     })
     .select()
     .single()
 
   if (error) {
     console.error('Error creating campaign:', error)
-    throw new Error('Failed to create campaign')
+    console.error('Campaign data being inserted:', { ...campaignData, slug, actor: 'system' })
+    throw new Error(`Failed to create campaign: ${error.message || error.code || 'Unknown error'}`)
   }
 
   revalidatePath('/campaigns')
@@ -84,8 +86,8 @@ export async function updateCampaign(id: string, campaignData: UpdateCampaignDat
   const { data, error } = await supabase
     .from('campaigns')
     .update({
-      ...campaignData,
-      actor: 'system'
+      ...campaignData
+      // Removed actor field
     })
     .eq('id', id)
     .select()

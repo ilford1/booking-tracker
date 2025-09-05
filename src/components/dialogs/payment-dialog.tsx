@@ -374,7 +374,7 @@ export function PaymentCreateDialog({ trigger, onSuccess }: PaymentCreateDialogP
         due_date: formData.due_date || null,
         notes: formData.notes || null,
         transaction_id: formData.transaction_id || null,
-        currency: 'USD'
+        currency: 'VND'
       })
       toast.success('Payment created successfully')
       onSuccess?.()

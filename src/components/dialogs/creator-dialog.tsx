@@ -60,16 +60,34 @@ export function CreatorDialog({ trigger, creator, onSuccess }: CreatorDialogProp
           initialData={creator ? {
             name: creator.name,
             email: creator.email || '',
-            platform: creator.platform || 'instagram',
+            platforms: (creator.platforms as ("instagram" | "tiktok" | "facebook" | "other")[]) || 
+                      (creator.platform ? [creator.platform] as ("instagram" | "tiktok" | "facebook" | "other")[] : ['instagram']),
             handle: creator.handle || '',
             phone: creator.phone || '',
+            bank_account: typeof creator.bank_account === 'object' && creator.bank_account !== null
+              ? {
+                  account_holder: (creator.bank_account as any).account_holder || '',
+                  bank_name: (creator.bank_account as any).bank_name || '',
+                  account_number: (creator.bank_account as any).account_number || '',
+                  routing_number: (creator.bank_account as any).routing_number || '',
+                }
+              : {
+                  account_holder: '',
+                  bank_name: '',
+                  account_number: '',
+                  routing_number: '',
+                },
             followers: creator.followers || undefined,
             avg_views: creator.avg_views || undefined,
             avg_likes: creator.avg_likes || undefined,
-            tags: creator.tags || [],
-            rate_card: creator.rate_card || {},
+            // tags: creator.tags || [], // Removed tags field
+            rate_card: typeof creator.rate_card === 'object' && creator.rate_card !== null
+              ? creator.rate_card as Record<string, number>
+              : {},
             notes: creator.notes || '',
-            links: creator.links || {},
+            links: typeof creator.links === 'object' && creator.links !== null
+              ? creator.links as Record<string, string>
+              : {},
           } : undefined}
           onSuccess={handleSuccess}
           onCancel={handleCancel}

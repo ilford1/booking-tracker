@@ -75,8 +75,8 @@ export function DetailsDialog({ trigger, data, type }: DetailsDialogProps) {
                       <div className="text-sm capitalize">{creator.platform || 'Not set'}</div>
                     </div>
                     <div>
-                      <div className="text-sm font-medium text-gray-600">Email</div>
-                      <div className="text-sm">{creator.email || 'Not set'}</div>
+                      <div className="text-sm font-medium text-gray-600">Post Rate</div>
+                      <div className="text-sm">{creator.rate_card && typeof creator.rate_card === 'object' && (creator.rate_card as any).post ? formatCurrency((creator.rate_card as any).post) : 'Not set'}</div>
                     </div>
                   </div>
 
@@ -118,19 +118,7 @@ export function DetailsDialog({ trigger, data, type }: DetailsDialogProps) {
                     </div>
                   )}
 
-                  {/* Tags */}
-                  {creator.tags && creator.tags.length > 0 && (
-                    <div>
-                      <div className="text-sm font-medium text-gray-600 mb-2">Tags</div>
-                      <div className="flex flex-wrap gap-1">
-                        {creator.tags.map((tag) => (
-                          <Badge key={tag} variant="secondary" className="text-xs">
-                            {tag}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                  {/* Tags section removed */}
 
                   {/* Links */}
                   {creator.links && Object.keys(creator.links).length > 0 && (
@@ -183,6 +171,10 @@ export function DetailsDialog({ trigger, data, type }: DetailsDialogProps) {
                       <div className="text-sm">{campaign.slug || 'Not set'}</div>
                     </div>
                     <div>
+                      <div className="text-sm font-medium text-gray-600">Brand Assigned</div>
+                      <div className="text-sm">{campaign.brand || 'Not set'}</div>
+                    </div>
+                    <div>
                       <div className="text-sm font-medium text-gray-600">Objective</div>
                       <div className="text-sm">{campaign.objective || 'Not set'}</div>
                     </div>
@@ -213,19 +205,7 @@ export function DetailsDialog({ trigger, data, type }: DetailsDialogProps) {
                     </div>
                   )}
 
-                  {/* Tags */}
-                  {campaign.tags && campaign.tags.length > 0 && (
-                    <div>
-                      <div className="text-sm font-medium text-gray-600 mb-2">Tags</div>
-                      <div className="flex flex-wrap gap-1">
-                        {campaign.tags.map((tag) => (
-                          <Badge key={tag} variant="secondary" className="text-xs">
-                            {tag}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                  {/* Tags section removed */}
 
                   {/* Metadata */}
                   <div className="pt-4 border-t">

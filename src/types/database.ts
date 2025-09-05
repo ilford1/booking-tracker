@@ -3,9 +3,11 @@ export type Creator = {
   id: string
   name: string
   handle?: string | null
-  platform?: 'instagram' | 'tiktok' | 'youtube' | 'facebook' | 'other' | null
+  platform?: 'instagram' | 'tiktok' | 'facebook' | 'other' | null
+  platforms?: string[] | null
   email?: string | null
   phone?: string | null
+  bank_account?: Record<string, string> | null
   followers?: number | null
   avg_views?: number | null
   avg_likes?: number | null
@@ -22,6 +24,7 @@ export type Campaign = {
   id: string
   name: string
   slug?: string | null
+  brand?: string | null
   objective?: string | null
   budget?: number | null
   start_date?: string | null

@@ -61,12 +61,13 @@ export function CampaignDialog({ trigger, campaign, onSuccess }: CampaignDialogP
             id: campaign.id,
             name: campaign.name,
             slug: campaign.slug || '',
+            brand: campaign.brand || '',
             objective: campaign.objective || '',
             budget: campaign.budget || undefined,
             start_date: campaign.start_date || '',
             end_date: campaign.end_date || '',
             default_brief: campaign.default_brief || '',
-            tags: campaign.tags || [],
+            // tags: campaign.tags || [], // Removed tags field
           } : undefined}
           onSuccess={handleSuccess}
           onCancel={handleCancel}
