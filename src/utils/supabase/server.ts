@@ -23,6 +23,12 @@ export async function createClient() {
             // user sessions.
           }
         },
+      },
+      auth: {
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: true,
+        flowType: 'pkce'
       }
     }
   )
