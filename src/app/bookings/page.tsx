@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { AppShell } from '@/components/app-shell'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -37,10 +38,13 @@ import {
   User,
   Calendar,
   DollarSign,
-  Download
+  Download,
+  Eye,
+  ArrowRight
 } from 'lucide-react'
 
 export default function BookingsPage() {
+  const router = useRouter()
   const [bookings, setBookings] = useState<Booking[]>([])
   const [filteredBookings, setFilteredBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(true)
