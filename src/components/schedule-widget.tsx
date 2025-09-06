@@ -85,14 +85,20 @@ export function ScheduleWidget({ className, campaignFilter }: ScheduleWidgetProp
         setLoading(true)
         const supabase = createClient()
         
-        // Get today and next 7 days
+        // Get recent bookings (last 30 days) and upcoming items
         const now = new Date()
+        const past30Days = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
         const next7Days = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
         
-        // Fetch bookings for the next 7 days
-        let bookingsQuery = supabase.from('bookings').select('*')
-          .gte('created_at', now.toISOString())
-          .lte('created_at', next7Days.toISOString())
+        // Fetch recent bookings with campaign and creator relations
+        let bookingsQuery = supabase.from('bookings')
+          .select(`
+            *,
+            campaign:campaigns(id, name),
+            creator:creators(id, name, handle)
+          `)
+          .gte('created_at', past30Days.toISOString())
+          .neq('status', 'canceled')
         
         // Apply campaign filter if provided
         if (campaignFilter) {
@@ -100,8 +106,8 @@ export function ScheduleWidget({ className, campaignFilter }: ScheduleWidgetProp
         }
         
         const { data: bookings, error: bookingsError } = await bookingsQuery
-          .order('created_at', { ascending: true })
-          .limit(10)
+          .order('created_at', { ascending: false })
+          .limit(20)
         
         if (bookingsError) {
           // Don't log errors for missing tables or connection issues
@@ -110,10 +116,9 @@ export function ScheduleWidget({ className, campaignFilter }: ScheduleWidgetProp
           }
         }
         
-        // Fetch campaigns starting in the next 7 days
+        // Fetch campaigns with start dates in the next 7 days (or recent ones)
         let campaignsQuery = supabase.from('campaigns').select('*')
-          .gte('start_date', now.toISOString())
-          .lte('start_date', next7Days.toISOString())
+          .or(`start_date.gte.${now.toISOString().split('T')[0]},start_date.is.null`)
         
         // Apply campaign filter if provided
         if (campaignFilter) {
@@ -121,7 +126,7 @@ export function ScheduleWidget({ className, campaignFilter }: ScheduleWidgetProp
         }
         
         const { data: campaigns, error: campaignsError } = await campaignsQuery
-          .order('start_date', { ascending: true })
+          .order('start_date', { ascending: true, nullsLast: true })
           .limit(10)
         
         if (campaignsError) {
@@ -134,41 +139,48 @@ export function ScheduleWidget({ className, campaignFilter }: ScheduleWidgetProp
         // Transform data into schedule items
         const items: ScheduleItem[] = []
         
-        // Add bookings and their deliverables
+        // Add bookings
         if (bookings) {
-          bookings.forEach(booking => {
-            // Add the booking itself
-            const bookingDate = new Date(booking.created_at)
-            const isOverdue = bookingDate < now && booking.status !== 'delivered'
-            const isCompleted = booking.status === 'delivered'
+          bookings.forEach((booking: any) => {
+            // Determine booking status
+            const isCompleted = booking.status === 'completed'
+            const isOverdue = ['pending', 'in_process'].includes(booking.status) && 
+                              new Date(booking.created_at).getTime() < (now.getTime() - 7 * 24 * 60 * 60 * 1000)
+            
+            // Determine priority based on agreed_amount or offer_amount
+            const amount = booking.agreed_amount || booking.offer_amount || 0
+            let priority: 'high' | 'medium' | 'low' = 'low'
+            if (amount > 5000000) priority = 'high'
+            else if (amount > 1000000) priority = 'medium'
             
             items.push({
               id: booking.id,
               type: 'booking',
-              title: booking.campaign_name || 'Booking',
-              campaign: booking.campaign_name,
-              creator: booking.creator_username,
+              title: booking.campaign?.name || booking.brief || 'New Booking',
+              campaign: booking.campaign?.name || undefined,
+              creator: booking.creator?.name || booking.creator?.handle || undefined,
               time: booking.created_at,
               status: isCompleted ? 'completed' : isOverdue ? 'overdue' : 'upcoming',
-              priority: booking.amount > 5000000 ? 'high' : booking.amount > 2000000 ? 'medium' : 'low'
+              priority
             })
             
-            // Add deliverable deadline if scheduled_date exists
-            if (booking.scheduled_date) {
-              const deliverableDate = new Date(booking.scheduled_date)
-              // Only add if within the next 7 days
-              if (deliverableDate >= now && deliverableDate <= next7Days) {
-                const isDeliverableOverdue = deliverableDate < now && booking.status !== 'delivered'
+            // Add payment deadline for approved bookings
+            if (booking.status === 'approved' || booking.status === 'completed') {
+              const paymentDate = new Date(booking.updated_at)
+              paymentDate.setDate(paymentDate.getDate() + 7) // 7 days after approval
+              
+              if (paymentDate <= next7Days) {
+                const isPaymentOverdue = paymentDate < now && booking.status !== 'completed'
                 
                 items.push({
-                  id: `${booking.id}-deliverable`,
-                  type: 'deadline',
-                  title: `Deliverable: ${booking.content_type || 'Content'}`,
-                  campaign: booking.campaign_name,
-                  creator: booking.creator_username,
-                  time: booking.scheduled_date,
-                  status: booking.status === 'delivered' ? 'completed' : isDeliverableOverdue ? 'overdue' : 'upcoming',
-                  priority: booking.amount > 5000000 ? 'high' : booking.amount > 2000000 ? 'medium' : 'low'
+                  id: `${booking.id}-payment`,
+                  type: 'payment',
+                  title: `Payment Due: ${booking.campaign?.name || 'Booking'}`,
+                  campaign: booking.campaign?.name || undefined,
+                  creator: booking.creator?.name || booking.creator?.handle || undefined,
+                  time: paymentDate.toISOString(),
+                  status: booking.status === 'completed' ? 'completed' : isPaymentOverdue ? 'overdue' : 'upcoming',
+                  priority
                 })
               }
             }
@@ -177,27 +189,57 @@ export function ScheduleWidget({ className, campaignFilter }: ScheduleWidgetProp
         
         // Add campaigns
         if (campaigns) {
-          campaigns.forEach(campaign => {
-            const campaignDate = new Date(campaign.start_date)
-            const isOverdue = campaignDate < now && campaign.status !== 'completed'
-            const isCompleted = campaign.status === 'completed'
+          campaigns.forEach((campaign: any) => {
+            // Use start_date if available, otherwise created_at
+            const campaignDate = campaign.start_date ? new Date(campaign.start_date) : new Date(campaign.created_at)
+            const isOverdue = campaign.start_date && campaignDate < now
+            const isUpcoming = !campaign.start_date || campaignDate >= now
+            
+            // Determine priority based on budget
+            const budget = campaign.budget || 0
+            let priority: 'high' | 'medium' | 'low' = 'low'
+            if (budget > 10000000) priority = 'high'
+            else if (budget > 5000000) priority = 'medium'
             
             items.push({
               id: campaign.id,
               type: 'campaign',
               title: campaign.name,
               campaign: campaign.name,
-              time: campaign.start_date,
-              status: isCompleted ? 'completed' : isOverdue ? 'overdue' : 'upcoming',
-              priority: campaign.budget > 10000000 ? 'high' : campaign.budget > 5000000 ? 'medium' : 'low'
+              time: campaign.start_date || campaign.created_at,
+              status: isOverdue ? 'overdue' : 'upcoming',
+              priority
             })
           })
         }
         
-        // Sort by time and take first 5 items
-        const sortedItems = items
-          .sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime())
-          .slice(0, 5)
+        // Filter items to show relevant ones (today, tomorrow, or recent)
+        const relevantItems = items.filter(item => {
+          const itemDate = new Date(item.time)
+          const daysDiff = Math.ceil((itemDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+          // Show items from 7 days ago to 7 days in the future
+          return daysDiff >= -7 && daysDiff <= 7
+        })
+        
+        // Sort by time (upcoming first, then recent)
+        const sortedItems = relevantItems
+          .sort((a, b) => {
+            const aTime = new Date(a.time).getTime()
+            const bTime = new Date(b.time).getTime()
+            const nowTime = now.getTime()
+            
+            // Upcoming items first (sorted by time)
+            if (aTime >= nowTime && bTime >= nowTime) {
+              return aTime - bTime
+            }
+            // Past items second (most recent first)
+            if (aTime < nowTime && bTime < nowTime) {
+              return bTime - aTime
+            }
+            // Upcoming items come before past items
+            return aTime >= nowTime ? -1 : 1
+          })
+          .slice(0, 8) // Show up to 8 items
         
         setScheduleItems(sortedItems)
       } catch (error) {
@@ -226,6 +268,23 @@ export function ScheduleWidget({ className, campaignFilter }: ScheduleWidgetProp
     tomorrow.setDate(tomorrow.getDate() + 1)
     const itemDate = new Date(item.time)
     return itemDate.toDateString() === tomorrow.toDateString()
+  })
+  
+  const recentItems = scheduleItems.filter(item => {
+    const today = new Date()
+    const tomorrow = new Date()
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    const itemDate = new Date(item.time)
+    return itemDate.toDateString() !== today.toDateString() && 
+           itemDate.toDateString() !== tomorrow.toDateString() &&
+           itemDate.getTime() < tomorrow.getTime()
+  })
+  
+  const upcomingItems = scheduleItems.filter(item => {
+    const tomorrow = new Date()
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    const itemDate = new Date(item.time)
+    return itemDate.getTime() > tomorrow.getTime()
   })
 
   if (loading) {
