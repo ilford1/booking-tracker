@@ -32,13 +32,6 @@ import {
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState({
-    profile: {
-      name: 'John Doe',
-      email: 'john@example.com',
-      company: 'Acme Marketing',
-      timezone: 'America/New_York',
-      language: 'en',
-    },
     notifications: {
       emailNotifications: true,
       pushNotifications: false,
@@ -228,61 +221,23 @@ export default function SettingsPage() {
         </div>
 
         <div className="space-y-8">
-          {/* Profile Settings */}
+          {/* Timezone Information */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <User className="h-5 w-5" />
-                Profile Settings
+                System Settings
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Full Name</Label>
-                  <Input
-                    id="name"
-                    value={settings.profile.name}
-                    onChange={(e) => updateSetting('profile', 'name', e.target.value)}
-                  />
+              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                <div>
+                  <h4 className="font-medium text-gray-900">Default Timezone</h4>
+                  <p className="text-sm text-gray-500">All dates and times are displayed in Vietnam timezone</p>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email Address</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={settings.profile.email}
-                    onChange={(e) => updateSetting('profile', 'email', e.target.value)}
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="company">Company</Label>
-                  <Input
-                    id="company"
-                    value={settings.profile.company}
-                    onChange={(e) => updateSetting('profile', 'company', e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="timezone">Timezone</Label>
-                  <Select 
-                    value={settings.profile.timezone}
-                    onValueChange={(value) => updateSetting('profile', 'timezone', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="America/New_York">Eastern Time</SelectItem>
-                      <SelectItem value="America/Chicago">Central Time</SelectItem>
-                      <SelectItem value="America/Denver">Mountain Time</SelectItem>
-                      <SelectItem value="America/Los_Angeles">Pacific Time</SelectItem>
-                      <SelectItem value="Europe/London">London</SelectItem>
-                      <SelectItem value="Europe/Paris">Paris</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="text-right">
+                  <p className="font-medium text-gray-900">UTC+7</p>
+                  <p className="text-sm text-gray-500">Ho Chi Minh City</p>
                 </div>
               </div>
             </CardContent>
