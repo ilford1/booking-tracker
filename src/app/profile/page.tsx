@@ -85,20 +85,30 @@ function ProfileContent() {
 
     setIsUploadingAvatar(true)
     try {
-      // Create a temporary URL for preview
+      // Create a temporary URL for immediate preview
       const tempUrl = URL.createObjectURL(file)
       
-      // Update the profile data with the new avatar
+      // Update local profile data for immediate UI feedback
       setProfileData(prev => ({ ...prev, avatar_url: tempUrl }))
       
-      // In a real implementation, you would upload to your storage service here
-      // For now, we'll simulate an upload delay
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      // Simulate upload delay
+      await new Promise(resolve => setTimeout(resolve, 1500))
       
-      toast.success('Avatar uploaded successfully! Click "Save Changes" to apply.')
+      // Immediately update the user profile in the auth context
+      // This will make the avatar appear in the top bar immediately
+      const updatedProfileData = { ...profileData, avatar_url: tempUrl }
+      const { error } = await updateProfile(updatedProfileData)
+      
+      if (error) {
+        throw error
+      }
+      
+      toast.success('Avatar updated successfully!')
     } catch (error) {
       console.error('Failed to upload avatar:', error)
       toast.error('Failed to upload avatar')
+      // Revert the local state on error
+      setProfileData(prev => ({ ...prev, avatar_url: user?.profile?.avatar_url || '' }))
     } finally {
       setIsUploadingAvatar(false)
     }
@@ -151,7 +161,7 @@ function ProfileContent() {
             <CardContent>
               <div className="flex items-start gap-6">
                 <div className="flex flex-col items-center gap-4">
-                  <Avatar className="h-24 w-24">
+                  <Avatar className="h-24 w-24" key={profileData.avatar_url || 'no-avatar'}>
                     <AvatarImage src={profileData.avatar_url} alt="Profile" />
                     <AvatarFallback className="text-lg">
                       {(profileData.first_name?.[0] || '') + (profileData.last_name?.[0] || '')}

@@ -113,7 +113,7 @@ export function UserMenu({ showFullProfile = false }: UserMenuProps) {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-            <Avatar className="h-8 w-8">
+            <Avatar className="h-8 w-8" key={profile?.avatar_url || 'no-avatar'}>
               <AvatarImage src={profile?.avatar_url || ''} alt={displayName} />
               <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-xs">
                 {initials}
