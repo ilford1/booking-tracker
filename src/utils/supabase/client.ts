@@ -1,4 +1,4 @@
-import { createBrowserClient } from '@supabase/ssr'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 
 export function createClient() {
   // Use hardcoded values if environment variables are not available
@@ -24,7 +24,7 @@ export function createClient() {
     throw new Error('Missing Supabase configuration')
   }
   
-  return createBrowserClient(
+  return createSupabaseClient(
     supabaseUrl,
     supabaseAnonKey,
     {
@@ -37,9 +37,7 @@ export function createClient() {
       },
       global: {
         headers: {
-          'X-Client-Info': 'booking-tracker-client',
-          'apikey': supabaseAnonKey,
-          'Authorization': `Bearer ${supabaseAnonKey}`
+          'X-Client-Info': 'booking-tracker-client'
         }
       },
       db: {

@@ -196,7 +196,7 @@ export default function CreatorsPage() {
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Creators</h1>
               <p className="text-gray-500 mt-1">
-                Manage your KOL/KOC directory and their information
+                KOL/KOC management
               </p>
             </div>
             <div className="flex gap-2">

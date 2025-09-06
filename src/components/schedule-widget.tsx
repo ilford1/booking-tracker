@@ -209,11 +209,11 @@ export function ScheduleWidget({ className, campaignFilter }: ScheduleWidgetProp
     }
 
     loadSchedule()
-  }, [campaignFilter])
+    
     // Refresh every 30 seconds
     const interval = setInterval(loadSchedule, 30000)
     return () => clearInterval(interval)
-  }, [])
+  }, [campaignFilter])
 
   const todayItems = scheduleItems.filter(item => {
     const today = new Date()

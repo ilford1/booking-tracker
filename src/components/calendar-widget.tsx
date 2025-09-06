@@ -47,7 +47,12 @@ export function CalendarWidget({ className, campaignFilter }: CalendarWidgetProp
       const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)
       const lastDay = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0)
       
-      // Fetch ALL bookings (not just current month) to check for scheduled dates
+      // Fetch bookings that have scheduled dates in the current month
+      // OR were created in the current month
+      const startOfMonth = firstDay.toISOString().split('T')[0]
+      const endOfMonth = lastDay.toISOString().split('T')[0]
+      
+      // Fetch ALL bookings to process both created_at and scheduled_date
       let bookingsQuery = supabase.from('bookings').select('*')
       
       // Apply campaign filter if provided
@@ -67,20 +72,26 @@ export function CalendarWidget({ className, campaignFilter }: CalendarWidgetProp
       }
       
       // Transform bookings into calendar events
-      const calendarEvents: CalendarEvent[] = []
+      const calendarEvents = [] as CalendarEvent[]
       
       // Process bookings and their scheduled dates
-      (bookings || []).forEach(booking => {
+      (bookings || []).forEach((booking: any) => {
+        // Skip bookings without any meaningful data
+        if (!booking.campaign_name && !booking.creator_username && !booking.scheduled_date) {
+          return
+        }
+        
         const bookingDate = new Date(booking.created_at)
         
-        // Add booking event if it's in the current month
+        // Add booking event if it's in the current month and has some data
         if (bookingDate.getMonth() === currentDate.getMonth() && 
-            bookingDate.getFullYear() === currentDate.getFullYear()) {
+            bookingDate.getFullYear() === currentDate.getFullYear() &&
+            (booking.campaign_name || booking.creator_username)) {
           calendarEvents.push({
             date: bookingDate.getDate(),
-            title: booking.campaign_name || 'Booking',
+            title: booking.campaign_name || `Booking ${booking.creator_username || ''}`.trim() || 'Booking',
             type: 'booking' as const,
-            description: `@${booking.creator_username || 'unknown'}`,
+            description: booking.creator_username ? `@${booking.creator_username}` : 'No creator specified',
             id: booking.id
           })
         }
@@ -90,11 +101,22 @@ export function CalendarWidget({ className, campaignFilter }: CalendarWidgetProp
           const deliverableDate = new Date(booking.scheduled_date)
           if (deliverableDate.getMonth() === currentDate.getMonth() && 
               deliverableDate.getFullYear() === currentDate.getFullYear()) {
+            const title = booking.content_type 
+              ? `${booking.content_type} Due`
+              : booking.campaign_name 
+              ? `${booking.campaign_name} Deadline`
+              : 'Delivery Due'
+            
+            const description = [
+              booking.creator_username ? `@${booking.creator_username}` : null,
+              booking.campaign_name || null
+            ].filter(Boolean).join(' - ') || 'Scheduled delivery'
+            
             calendarEvents.push({
               date: deliverableDate.getDate(),
-              title: `${booking.content_type || 'Content'} Due`,
+              title,
               type: 'deadline' as const,
-              description: `@${booking.creator_username} - ${booking.campaign_name || 'Campaign'}`,
+              description,
               id: `${booking.id}-deadline`
             })
           }
@@ -103,8 +125,8 @@ export function CalendarWidget({ className, campaignFilter }: CalendarWidgetProp
       
       // Also fetch campaigns for the current month
       let campaignsQuery = supabase.from('campaigns').select('*')
-        .gte('start_date', firstDay.toISOString())
-        .lte('start_date', lastDay.toISOString())
+        .gte('start_date', startOfMonth)
+        .lte('start_date', endOfMonth)
       
       // Apply campaign filter if provided
       if (campaignFilter) {
@@ -119,7 +141,7 @@ export function CalendarWidget({ className, campaignFilter }: CalendarWidgetProp
           console.warn('Calendar: Unable to fetch campaigns', campaignsError.code)
         }
       } else if (campaigns) {
-        campaigns.forEach(campaign => {
+        campaigns.forEach((campaign: any) => {
           const campaignDate = new Date(campaign.start_date)
           calendarEvents.push({
             date: campaignDate.getDate(),
@@ -138,8 +160,11 @@ export function CalendarWidget({ className, campaignFilter }: CalendarWidgetProp
         month: `${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear()}`,
         dateRange: {
           firstDay: firstDay.toISOString(),
-          lastDay: lastDay.toISOString()
+          lastDay: lastDay.toISOString(),
+          startOfMonth,
+          endOfMonth
         },
+        campaignFilter,
         fetchedData: {
           bookingsCount: bookings?.length || 0,
           campaignsCount: campaigns?.length || 0
@@ -151,7 +176,8 @@ export function CalendarWidget({ className, campaignFilter }: CalendarWidgetProp
           campaigns: calendarEvents.filter(e => e.type === 'campaign').length
         },
         eventDates: calendarEvents.map(e => ({ day: e.date, type: e.type, title: e.title })),
-        rawBookings: bookings?.slice(0, 3) // Show first 3 bookings for debugging
+        rawBookings: bookings?.slice(0, 5), // Show first 5 bookings for debugging
+        rawCampaigns: campaigns?.slice(0, 3) // Show campaigns for debugging
       })
     } catch (error) {
       console.error('Error in fetchEvents:', error)
