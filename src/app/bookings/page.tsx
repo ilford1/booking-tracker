@@ -11,6 +11,7 @@ import { formatCurrency, formatDate } from '@/lib/utils'
 import { BOOKING_STATUSES, STATUS_COLORS, type Booking } from '@/types'
 import { BookingDialog } from '@/components/dialogs/booking-dialog'
 import { StatusSelect } from '@/components/status-select'
+import { BookingActionsMenu } from '@/components/booking-context-menu'
 import { SearchInput } from '@/components/search-input'
 import {
   DropdownMenu,
@@ -40,7 +41,9 @@ import {
   DollarSign,
   Download,
   Eye,
-  ArrowRight
+  ArrowRight,
+  Edit,
+  ExternalLink
 } from 'lucide-react'
 
 export default function BookingsPage() {
@@ -343,13 +346,20 @@ export default function BookingsPage() {
                   </div>
                   <div className="space-y-3 min-h-[200px]">
                     {column.bookings.map((booking) => (
-                      <Card key={booking.id} className="hover:shadow-md transition-shadow cursor-pointer">
+                      <Card 
+                        key={booking.id} 
+                        className="hover:shadow-md transition-all duration-200 cursor-pointer group border hover:border-blue-200"
+                        onClick={() => router.push(`/bookings/${booking.id}`)}
+                      >
                         <CardContent className="p-4">
                           <div className="flex items-start justify-between mb-3">
                             <div className="flex-1">
-                              <p className="font-medium text-sm">
-                                {booking.creator?.name || 'Unknown Creator'}
-                              </p>
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium text-sm group-hover:text-blue-600 transition-colors">
+                                  {booking.creator?.name || 'Unknown Creator'}
+                                </p>
+                                <ArrowRight className="h-3 w-3 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                              </div>
                               <p className="text-xs text-gray-500 mt-1">
                                 {booking.campaign?.name || 'No Campaign'}
                               </p>
@@ -367,11 +377,25 @@ export default function BookingsPage() {
                             Created {formatDate(new Date(booking.created_at))}
                           </div>
                           
-                          <StatusSelect 
-                            bookingId={booking.id}
-                            currentStatus={booking.status}
-                            onStatusUpdate={handleBookingSuccess}
-                          />
+                          <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                            <StatusSelect 
+                              bookingId={booking.id}
+                              currentStatus={booking.status}
+                              onStatusUpdate={handleBookingSuccess}
+                            />
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              className="text-xs px-2 py-1 h-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                router.push(`/bookings/${booking.id}`)
+                              }}
+                            >
+                              <Eye className="h-3 w-3 mr-1" />
+                              View
+                            </Button>
+                          </div>
                         </CardContent>
                       </Card>
                     ))}
@@ -390,6 +414,26 @@ export default function BookingsPage() {
         ) : (
           /* Table View */
           <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold">Bookings Table</h3>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Click rows to view details • Right-click for quick actions • Use Tab and Enter for keyboard navigation
+                  </p>
+                </div>
+                <div className="text-xs text-gray-400 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <kbd className="px-2 py-1 bg-gray-100 rounded text-xs">Enter</kbd>
+                    <span>Open details</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <kbd className="px-2 py-1 bg-gray-100 rounded text-xs">Right Click</kbd>
+                    <span>Quick actions</span>
+                  </div>
+                </div>
+              </div>
+            </CardHeader>
             <CardContent className="p-0">
               <Table>
                 <TableHeader>
@@ -404,16 +448,47 @@ export default function BookingsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredBookings.map((booking) => (
-                    <TableRow key={booking.id}>
+                  {filteredBookings.map((booking, index) => (
+                    <TableRow 
+                      key={booking.id}
+                      className="cursor-pointer hover:bg-gray-50 transition-colors focus-within:bg-blue-50 focus-within:ring-2 focus-within:ring-blue-200 focus-within:ring-opacity-50"
+                      onClick={() => router.push(`/bookings/${booking.id}`)}
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          router.push(`/bookings/${booking.id}`)
+                        }
+                      }}
+                    >
                       <TableCell>
-                        <div>
-                          <p className="font-medium">{booking.creator?.name || 'Unknown'}</p>
-                          <p className="text-sm text-gray-500">{booking.creator?.handle || ''}</p>
+                        <div className="flex items-center gap-3">
+                          <div>
+                            <p className="font-medium flex items-center gap-2 group">
+                              {booking.creator?.name || 'Unknown'}
+                              <ArrowRight className="h-3 w-3 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                            </p>
+                            <p className="text-sm text-gray-500">{booking.creator?.handle || ''}</p>
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell>
-                        {booking.campaign?.name || 'No Campaign'}
+                        <div className="flex items-center gap-2">
+                          <span>{booking.campaign?.name || 'No Campaign'}</span>
+                          {booking.campaign?.name && (
+                            <Button 
+                              size="sm" 
+                              variant="ghost" 
+                              className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                router.push(`/campaigns/${booking.campaign_id}`)
+                              }}
+                            >
+                              <ExternalLink className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>
                         <Badge className={getStatusBadgeColor(booking.status)}>
@@ -424,21 +499,36 @@ export default function BookingsPage() {
                         {formatCurrency(booking.agreed_amount || booking.offer_amount || 0)}
                       </TableCell>
                       <TableCell>
-                        {booking.brief ? booking.brief.substring(0, 50) + '...' : '-'}
+                        <div title={booking.brief || 'No brief'}>
+                          {booking.brief ? booking.brief.substring(0, 50) + '...' : '-'}
+                        </div>
                       </TableCell>
                       <TableCell>
                         {formatDate(new Date(booking.created_at))}
                       </TableCell>
-                      <TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
                         <div className="flex gap-2">
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => router.push(`/bookings/${booking.id}`)}
+                            className="flex items-center gap-1"
+                          >
+                            <Eye className="h-3 w-3" />
+                            View
+                          </Button>
                           <BookingDialog 
                             booking={booking}
                             onSuccess={handleBookingSuccess}
                             trigger={
-                              <Button size="sm" variant="outline">
-                                Edit
+                              <Button size="sm" variant="ghost">
+                                <Edit className="h-3 w-3" />
                               </Button>
                             }
+                          />
+                          <BookingActionsMenu 
+                            booking={booking}
+                            onStatusUpdate={handleBookingSuccess}
                           />
                         </div>
                       </TableCell>
