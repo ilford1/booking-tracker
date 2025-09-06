@@ -6,15 +6,11 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { formatDate, formatDateTime } from '@/lib/utils'
 import { createClient } from '@/utils/supabase/client'
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { 
   Calendar, 
   Clock, 
   CheckCircle2, 
   AlertTriangle,
-  ArrowRight,
-  Plus,
   Megaphone,
   DollarSign
 } from 'lucide-react'
@@ -79,7 +75,6 @@ interface ScheduleWidgetProps {
 export function ScheduleWidget({ className, campaignFilter }: ScheduleWidgetProps) {
   const [scheduleItems, setScheduleItems] = useState<ScheduleItem[]>([])
   const [loading, setLoading] = useState(true)
-  const router = useRouter()
 
   useEffect(() => {
     const loadSchedule = async () => {
@@ -417,32 +412,10 @@ export function ScheduleWidget({ className, campaignFilter }: ScheduleWidgetProp
         {scheduleItems.length === 0 && (
           <div className="text-center py-6">
             <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-            <p className="text-sm text-gray-600 mb-2">No upcoming schedule</p>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => router.push('/calendar')}
-            >
-              View Calendar
-              <ArrowRight className="h-4 w-4 ml-1" />
-            </Button>
+            <p className="text-sm text-gray-600">No upcoming schedule</p>
           </div>
         )}
 
-        {/* View all link */}
-        {scheduleItems.length > 0 && (
-          <div className="pt-2 border-t">
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="w-full" 
-              onClick={() => router.push('/calendar')}
-            >
-              View Full Calendar
-              <ArrowRight className="h-4 w-4 ml-1" />
-            </Button>
-          </div>
-        )}
       </CardContent>
     </Card>
   )
