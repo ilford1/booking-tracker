@@ -33,7 +33,7 @@ import {
   Clock,
   Zap
 } from 'lucide-react'
-import type { CalendarEvent, CalendarFilters, CalendarViewPreferences } from '@/types/calendar'
+import type { CalendarEvent, CalendarFilters, CalendarPreferences } from '@/types/calendar'
 import { rescheduleEvent } from '@/lib/actions/calendar'
 
 // Setup the localizer for react-big-calendar
@@ -68,7 +68,12 @@ export function EnhancedCalendar({
   const [currentDate, setCurrentDate] = useState(new Date())
   const [searchQuery, setSearchQuery] = useState('')
   const [filters, setFilters] = useState<CalendarFilters>(initialFilters)
-  const [viewPreferences, setViewPreferences] = useState<CalendarViewPreferences>({
+  const [viewPreferences, setViewPreferences] = useState<{
+    showOverdueOnly: boolean
+    showPriorityColors: boolean
+    groupByCreator: boolean
+    showEventDescriptions: boolean
+  }>({
     showOverdueOnly: false,
     showPriorityColors: true,
     groupByCreator: false,
