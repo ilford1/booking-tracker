@@ -1,9 +1,10 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
+import { useNotifications } from '@/lib/notifications-context'
 import { 
   LayoutDashboard, 
   Users, 
@@ -59,31 +60,8 @@ export function AppShell({ children }: AppShellProps) {
   const router = useRouter()
   const globalSearch = useGlobalSearch()
   const { canAccessAdminFeatures } = useUserPermissions()
+  const { notifications, deleteNotification, unreadCount } = useNotifications()
   
-  // Sample notifications state - in real app this would come from a context or API
-  const [notifications, setNotifications] = React.useState([
-    {
-      id: '1',
-      title: 'New booking request',
-      message: '@fashionista_jane wants to collaborate',
-      time: '2 minutes ago',
-      type: 'booking',
-      read: false
-    },
-    {
-      id: '2', 
-      title: 'Payment received',
-      message: '₫2,500,000 for Summer Campaign',
-      time: '1 hour ago',
-      type: 'payment',
-      read: false
-    }
-  ])
-
-  const dismissNotification = (id: string) => {
-    setNotifications(prev => prev.filter(notif => notif.id !== id))
-  }
-
   const handleViewAllNotifications = () => {
     router.push('/notifications')
   }
@@ -201,9 +179,9 @@ export function AppShell({ children }: AppShellProps) {
                   <Button variant="ghost" size="icon" className="relative">
                     <Bell className="h-5 w-5" />
                     {/* Notification badge */}
-                    {notifications.length > 0 && (
+                    {unreadCount > 0 && (
                       <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-                        {notifications.length}
+                        {unreadCount}
                       </span>
                     )}
                   </Button>
@@ -212,23 +190,30 @@ export function AppShell({ children }: AppShellProps) {
                   <DropdownMenuLabel className="flex items-center justify-between">
                     <span>Notifications</span>
                     <Badge variant="secondary" className="text-xs">
-                      {notifications.length} new
+                      {unreadCount} new
                     </Badge>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   
                   {/* Dynamic notifications */}
                   {notifications.length > 0 ? (
-                    notifications.map((notification) => (
-                      <div key={notification.id} className="flex items-start space-x-3 p-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0">
+                    notifications.slice(0, 5).map((notification) => (
+                      <div key={notification.id} className={`flex items-start space-x-3 p-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 ${
+                        !notification.read ? 'bg-blue-50' : ''
+                      }`}>
                         <div className="flex-shrink-0">
                           <div className={`w-2 h-2 rounded-full mt-2 ${
                             notification.type === 'booking' ? 'bg-blue-500' : 
-                            notification.type === 'payment' ? 'bg-green-500' : 'bg-gray-500'
+                            notification.type === 'payment' ? 'bg-green-500' : 
+                            notification.type === 'campaign' ? 'bg-purple-500' :
+                            notification.type === 'creator' ? 'bg-orange-500' :
+                            notification.type === 'reminder' ? 'bg-yellow-500' : 'bg-gray-500'
                           }`}></div>
                         </div>
-                        <div className="flex-1 min-w-0 cursor-pointer" onClick={() => console.log('Clicked notification:', notification.id)}>
-                          <p className="text-sm font-medium text-gray-900 truncate">
+                        <div className="flex-1 min-w-0 cursor-pointer" onClick={() => router.push('/notifications')}>
+                          <p className={`text-sm font-medium truncate ${
+                            !notification.read ? 'text-gray-900' : 'text-gray-700'
+                          }`}>
                             {notification.title}
                           </p>
                           <p className="text-sm text-gray-500 truncate">
@@ -244,7 +229,7 @@ export function AppShell({ children }: AppShellProps) {
                           className="flex-shrink-0 h-6 w-6 p-0 hover:bg-red-100"
                           onClick={(e) => {
                             e.stopPropagation()
-                            dismissNotification(notification.id)
+                            deleteNotification(notification.id)
                           }}
                         >
                           <X className="h-3 w-3" />
@@ -253,7 +238,7 @@ export function AppShell({ children }: AppShellProps) {
                     ))
                   ) : (
                     <div className="p-4 text-center text-gray-500">
-                      <p className="text-sm">No new notifications</p>
+                      <p className="text-sm">No notifications</p>
                     </div>
                   )}
                   

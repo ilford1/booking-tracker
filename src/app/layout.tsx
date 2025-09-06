@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import { Toaster } from 'sonner'
 import { AuthProvider } from '@/lib/auth-context'
+import { NotificationsProvider } from '@/lib/notifications-context'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -20,10 +21,12 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         <AuthProvider>
-          <div className="min-h-screen bg-background font-sans antialiased">
-            {children}
-          </div>
-          <Toaster richColors position="top-right" />
+          <NotificationsProvider>
+            <div className="min-h-screen bg-background font-sans antialiased">
+              {children}
+            </div>
+            <Toaster richColors position="top-right" />
+          </NotificationsProvider>
         </AuthProvider>
       </body>
     </html>

@@ -6,6 +6,7 @@ import { ProtectedRoute } from '@/components/auth/protected-route'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { useNotifications } from '@/lib/notifications-context'
 import { 
   Bell, 
   Check, 
@@ -17,81 +18,26 @@ import {
   Clock
 } from 'lucide-react'
 
-const mockNotifications = [
-  {
-    id: '1',
-    title: 'New booking request',
-    message: '@fashionista_jane wants to collaborate on your Summer Collection campaign',
-    time: '2 minutes ago',
-    type: 'booking',
-    read: false,
-    icon: Calendar,
-    color: 'bg-blue-500'
-  },
-  {
-    id: '2', 
-    title: 'Payment received',
-    message: '₫2,500,000 payment received for Summer Campaign from Acme Brand',
-    time: '1 hour ago',
-    type: 'payment',
-    read: false,
-    icon: CreditCard,
-    color: 'bg-green-500'
-  },
-  {
-    id: '3',
-    title: 'Campaign completed',
-    message: 'Your "Tech Product Launch" campaign has been marked as completed',
-    time: '2 hours ago',
-    type: 'campaign',
-    read: true,
-    icon: Megaphone,
-    color: 'bg-purple-500'
-  },
-  {
-    id: '4',
-    title: 'New creator joined',
-    message: '@beauty_influencer has joined your platform and is available for bookings',
-    time: '1 day ago',
-    type: 'creator',
-    read: true,
-    icon: Users,
-    color: 'bg-orange-500'
-  },
-  {
-    id: '5',
-    title: 'Reminder: Campaign deadline',
-    message: 'Your "Skincare Routine" campaign deadline is approaching (2 days left)',
-    time: '2 days ago',
-    type: 'reminder',
-    read: true,
-    icon: Clock,
-    color: 'bg-yellow-500'
+// Icon mapping for notification types
+const getNotificationIcon = (type: string) => {
+  switch (type) {
+    case 'booking': return { icon: Calendar, color: 'bg-blue-500' }
+    case 'payment': return { icon: CreditCard, color: 'bg-green-500' }
+    case 'campaign': return { icon: Megaphone, color: 'bg-purple-500' }
+    case 'creator': return { icon: Users, color: 'bg-orange-500' }
+    case 'reminder': return { icon: Clock, color: 'bg-yellow-500' }
+    default: return { icon: Bell, color: 'bg-gray-500' }
   }
-]
+}
 
 function NotificationsContent() {
-  const [notifications, setNotifications] = React.useState(mockNotifications)
-
-  const markAsRead = (id: string) => {
-    setNotifications(prev => 
-      prev.map(notif => 
-        notif.id === id ? { ...notif, read: true } : notif
-      )
-    )
-  }
-
-  const markAllAsRead = () => {
-    setNotifications(prev => 
-      prev.map(notif => ({ ...notif, read: true }))
-    )
-  }
-
-  const deleteNotification = (id: string) => {
-    setNotifications(prev => prev.filter(notif => notif.id !== id))
-  }
-
-  const unreadCount = notifications.filter(n => !n.read).length
+  const { 
+    notifications, 
+    markAsRead, 
+    markAllAsRead, 
+    deleteNotification, 
+    unreadCount 
+  } = useNotifications()
 
   return (
     <AppShell>
@@ -126,13 +72,13 @@ function NotificationsContent() {
         <div className="space-y-4">
           {notifications.length > 0 ? (
             notifications.map((notification) => {
-              const IconComponent = notification.icon
+              const { icon: IconComponent, color } = getNotificationIcon(notification.type)
               return (
                 <Card key={notification.id} className={`transition-all duration-200 hover:shadow-md ${!notification.read ? 'bg-blue-50 border-blue-200' : ''}`}>
                   <CardContent className="p-6">
                     <div className="flex items-start gap-4">
                       {/* Icon */}
-                      <div className={`p-2 rounded-full ${notification.color} text-white flex-shrink-0`}>
+                      <div className={`p-2 rounded-full ${color} text-white flex-shrink-0`}>
                         <IconComponent className="h-4 w-4" />
                       </div>
                       
