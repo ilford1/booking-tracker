@@ -1,8 +1,8 @@
 'use client'
 
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { 
   LayoutDashboard, 
@@ -45,6 +45,7 @@ const navigation = [
   { name: 'Calendar', href: '/calendar', icon: Calendar },
   { name: 'Payments', href: '/payments', icon: CreditCard },
   { name: 'Reports', href: '/reports', icon: BarChart3 },
+  { name: 'Notifications', href: '/notifications', icon: Bell },
   { name: 'Profile', href: '/profile', icon: User },
   { name: 'Settings', href: '/settings', icon: Settings },
 ]
@@ -55,8 +56,37 @@ interface AppShellProps {
 
 export function AppShell({ children }: AppShellProps) {
   const pathname = usePathname()
+  const router = useRouter()
   const globalSearch = useGlobalSearch()
   const { canAccessAdminFeatures } = useUserPermissions()
+  
+  // Sample notifications state - in real app this would come from a context or API
+  const [notifications, setNotifications] = React.useState([
+    {
+      id: '1',
+      title: 'New booking request',
+      message: '@fashionista_jane wants to collaborate',
+      time: '2 minutes ago',
+      type: 'booking',
+      read: false
+    },
+    {
+      id: '2', 
+      title: 'Payment received',
+      message: '₫2,500,000 for Summer Campaign',
+      time: '1 hour ago',
+      type: 'payment',
+      read: false
+    }
+  ])
+
+  const dismissNotification = (id: string) => {
+    setNotifications(prev => prev.filter(notif => notif.id !== id))
+  }
+
+  const handleViewAllNotifications = () => {
+    router.push('/notifications')
+  }
 
   // Global keyboard shortcuts
   useEffect(() => {
@@ -171,67 +201,72 @@ export function AppShell({ children }: AppShellProps) {
                   <Button variant="ghost" size="icon" className="relative">
                     <Bell className="h-5 w-5" />
                     {/* Notification badge */}
-                    <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-                      2
-                    </span>
+                    {notifications.length > 0 && (
+                      <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                        {notifications.length}
+                      </span>
+                    )}
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-80" align="end">
                   <DropdownMenuLabel className="flex items-center justify-between">
                     <span>Notifications</span>
                     <Badge variant="secondary" className="text-xs">
-                      2 new
+                      {notifications.length} new
                     </Badge>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   
-                  {/* Sample notifications */}
-                  <DropdownMenuItem className="flex items-start space-x-3 p-3 cursor-pointer">
-                    <div className="flex-shrink-0">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+                  {/* Dynamic notifications */}
+                  {notifications.length > 0 ? (
+                    notifications.map((notification) => (
+                      <div key={notification.id} className="flex items-start space-x-3 p-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0">
+                        <div className="flex-shrink-0">
+                          <div className={`w-2 h-2 rounded-full mt-2 ${
+                            notification.type === 'booking' ? 'bg-blue-500' : 
+                            notification.type === 'payment' ? 'bg-green-500' : 'bg-gray-500'
+                          }`}></div>
+                        </div>
+                        <div className="flex-1 min-w-0 cursor-pointer" onClick={() => console.log('Clicked notification:', notification.id)}>
+                          <p className="text-sm font-medium text-gray-900 truncate">
+                            {notification.title}
+                          </p>
+                          <p className="text-sm text-gray-500 truncate">
+                            {notification.message}
+                          </p>
+                          <p className="text-xs text-gray-400 mt-1">
+                            {notification.time}
+                          </p>
+                        </div>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="flex-shrink-0 h-6 w-6 p-0 hover:bg-red-100"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            dismissNotification(notification.id)
+                          }}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-4 text-center text-gray-500">
+                      <p className="text-sm">No new notifications</p>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">
-                        New booking request
-                      </p>
-                      <p className="text-sm text-gray-500 truncate">
-                        @fashionista_jane wants to collaborate
-                      </p>
-                      <p className="text-xs text-gray-400 mt-1">
-                        2 minutes ago
-                      </p>
-                    </div>
-                    <Button variant="ghost" size="sm" className="flex-shrink-0">
-                      <X className="h-3 w-3" />
-                    </Button>
-                  </DropdownMenuItem>
-                  
-                  <DropdownMenuItem className="flex items-start space-x-3 p-3 cursor-pointer">
-                    <div className="flex-shrink-0">
-                      <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">
-                        Payment received
-                      </p>
-                      <p className="text-sm text-gray-500 truncate">
-                        ₫2,500,000 for Summer Campaign
-                      </p>
-                      <p className="text-xs text-gray-400 mt-1">
-                        1 hour ago
-                      </p>
-                    </div>
-                    <Button variant="ghost" size="sm" className="flex-shrink-0">
-                      <X className="h-3 w-3" />
-                    </Button>
-                  </DropdownMenuItem>
+                  )}
                   
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem className="text-center p-2">
-                    <Button variant="ghost" className="w-full text-sm">
+                  <div className="p-2">
+                    <Button 
+                      variant="ghost" 
+                      className="w-full text-sm hover:bg-gray-100"
+                      onClick={handleViewAllNotifications}
+                    >
                       View all notifications
                     </Button>
-                  </DropdownMenuItem>
+                  </div>
                 </DropdownMenuContent>
               </DropdownMenu>
 

@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { AppShell } from '@/components/app-shell'
 import { toast } from 'sonner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -25,7 +25,9 @@ import {
   Download,
   Upload,
   Trash2,
-  Save
+  Save,
+  Loader2,
+  CheckCircle
 } from 'lucide-react'
 
 export default function SettingsPage() {
@@ -63,6 +65,8 @@ export default function SettingsPage() {
   })
 
   const [unsavedChanges, setUnsavedChanges] = useState(false)
+  const [isImporting, setIsImporting] = useState(false)
+  const importFileInputRef = useRef<HTMLInputElement>(null)
 
   // Load settings from localStorage on mount
   useEffect(() => {
@@ -115,6 +119,76 @@ export default function SettingsPage() {
       console.error('Failed to export settings:', error)
       toast.error('Failed to export settings')
     }
+  }
+
+  const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    // Validate file type
+    if (!file.name.endsWith('.csv') && !file.name.endsWith('.json')) {
+      toast.error('Please select a CSV or JSON file')
+      return
+    }
+
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('File size should be less than 10MB')
+      return
+    }
+
+    setIsImporting(true)
+    try {
+      const fileContent = await file.text()
+      let importedData: any
+
+      if (file.name.endsWith('.csv')) {
+        // Parse CSV (basic implementation)
+        const lines = fileContent.split('\n')
+        if (lines.length < 2) {
+          throw new Error('CSV file must contain headers and at least one data row')
+        }
+        
+        const headers = lines[0].split(',').map(h => h.trim())
+        const data = lines.slice(1)
+          .filter(line => line.trim())
+          .map(line => {
+            const values = line.split(',')
+            const obj: any = {}
+            headers.forEach((header, index) => {
+              obj[header] = values[index]?.trim() || ''
+            })
+            return obj
+          })
+        
+        importedData = data
+      } else {
+        // Parse JSON
+        importedData = JSON.parse(fileContent)
+      }
+
+      // Simulate processing time
+      await new Promise(resolve => setTimeout(resolve, 1500))
+
+      // In a real implementation, you would send this data to your backend
+      console.log('Imported data:', importedData)
+      
+      toast.success(`Successfully imported ${Array.isArray(importedData) ? importedData.length : 1} record(s)!`)
+      
+    } catch (error) {
+      console.error('Import failed:', error)
+      toast.error('Failed to import data. Please check file format.')
+    } finally {
+      setIsImporting(false)
+      // Reset file input
+      if (importFileInputRef.current) {
+        importFileInputRef.current.value = ''
+      }
+    }
+  }
+
+  const handleImportClick = () => {
+    importFileInputRef.current?.click()
   }
 
   const handleDeleteAccount = () => {
@@ -396,12 +470,35 @@ export default function SettingsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <h4 className="font-medium">Import Data</h4>
-                  <p className="text-sm text-gray-500">Import bookings from CSV file</p>
+                  <p className="text-sm text-gray-500">Import bookings from CSV or JSON file</p>
                 </div>
-                <Button variant="outline" className="gap-2">
-                  <Upload className="h-4 w-4" />
-                  Import
-                </Button>
+                <div className="flex items-center gap-2">
+                  <input
+                    ref={importFileInputRef}
+                    type="file"
+                    accept=".csv,.json"
+                    onChange={handleImport}
+                    className="hidden"
+                  />
+                  <Button 
+                    variant="outline" 
+                    className="gap-2" 
+                    onClick={handleImportClick}
+                    disabled={isImporting}
+                  >
+                    {isImporting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Importing...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="h-4 w-4" />
+                        Import
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
               <Separator />
               <div className="flex items-center justify-between">
