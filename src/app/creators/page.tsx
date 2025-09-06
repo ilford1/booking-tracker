@@ -57,7 +57,7 @@ export default function CreatorsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [platformFilter, setPlatformFilter] = useState('')
   const [campaignFilter, setCampaignFilter] = useState<string | null>(null)
-  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid')
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('table')
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -407,6 +407,15 @@ export default function CreatorsPage() {
                             trigger={
                               <Button variant="outline" size="sm">
                                 View
+                              </Button>
+                            }
+                          />
+                          <CreatorDialog
+                            creator={creator}
+                            onSuccess={handleCreatorSuccess}
+                            trigger={
+                              <Button variant="outline" size="sm">
+                                <Edit className="h-4 w-4" />
                               </Button>
                             }
                           />
