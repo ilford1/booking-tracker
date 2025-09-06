@@ -178,19 +178,20 @@ export function EnhancedCalendar({
     }
   }, [])
 
-  // Handle event drag and drop (rescheduling)
-  const handleEventDrop = useCallback(async ({ event, start, end }: any) => {
-    const calendarEvent = event.resource as CalendarEvent
-    
-    try {
-      await rescheduleEvent(calendarEvent.id, start, end)
-      toast.success('Event rescheduled successfully')
-      onEventUpdate?.()
-    } catch (error) {
-      console.error('Failed to reschedule event:', error)
-      toast.error('Failed to reschedule event')
-    }
-  }, [onEventUpdate])
+  // Handle event drag and drop (rescheduling) - disabled for now
+  // Requires react-big-calendar drag-and-drop addon
+  // const handleEventDrop = useCallback(async ({ event, start, end }: any) => {
+  //   const calendarEvent = event.resource as CalendarEvent
+  //   
+  //   try {
+  //     await rescheduleEvent(calendarEvent.id, start, end)
+  //     toast.success('Event rescheduled successfully')
+  //     onEventUpdate?.()
+  //   } catch (error) {
+  //     console.error('Failed to reschedule event:', error)
+  //     toast.error('Failed to reschedule event')
+  //   }
+  // }, [onEventUpdate])
 
   // Custom event component for the calendar
   const EventComponent = ({ event }: { event: any }) => {
@@ -396,8 +397,6 @@ export function EnhancedCalendar({
                 date={currentDate}
                 onNavigate={setCurrentDate}
                 onSelectEvent={handleSelectEvent}
-                onEventDrop={handleEventDrop}
-                draggableAccessor={() => true}
                 components={{
                   event: EventComponent,
                 }}
