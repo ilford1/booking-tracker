@@ -110,8 +110,8 @@ export default function PaymentsPage() {
       const creator = payment.booking?.creator?.name || 'Unknown'
       const campaign = payment.booking?.campaign?.name || 'Unknown' 
       const bookingId = payment.booking?.id || ''
-      const dueDate = payment.due_date ? formatDate(payment.due_date) : ''
-      const createdDate = formatDate(payment.created_at)
+      const dueDate = payment.due_date ? formatDate(new Date(payment.due_date)) : ''
+      const createdDate = formatDate(new Date(payment.created_at))
       return `"${creator}","${campaign}",${bookingId},${payment.amount},${payment.status},"${dueDate}","${createdDate}"`
     }).join('\n')
     
@@ -371,10 +371,10 @@ export default function PaymentsPage() {
                           {payment.payment_method || '-'}
                         </TableCell>
                         <TableCell>
-                          {payment.due_date ? formatDate(payment.due_date) : '-'}
+                          {payment.due_date ? formatDate(new Date(payment.due_date)) : '-'}
                         </TableCell>
                         <TableCell>
-                          {payment.paid_at ? formatDate(payment.paid_at) : '-'}
+                          {payment.paid_at ? formatDate(new Date(payment.paid_at)) : '-'}
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-2">

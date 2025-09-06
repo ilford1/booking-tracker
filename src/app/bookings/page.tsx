@@ -127,15 +127,11 @@ export default function BookingsPage() {
   const getStatusBadgeColor = (status: string) => {
     const colors = {
       pending: 'bg-yellow-100 text-yellow-800',
-      confirmed: 'bg-blue-100 text-blue-800',
-      booked: 'bg-green-100 text-green-800',
-      content_due: 'bg-orange-100 text-orange-800',
-      submitted: 'bg-purple-100 text-purple-800',
-      revision_needed: 'bg-red-100 text-red-800',
-      approved: 'bg-emerald-100 text-emerald-800',
-      posted: 'bg-indigo-100 text-indigo-800',
-      completed: 'bg-gray-100 text-gray-800',
-      cancelled: 'bg-gray-100 text-gray-800'
+      in_process: 'bg-blue-100 text-blue-800',
+      content_submitted: 'bg-purple-100 text-purple-800',
+      approved: 'bg-green-100 text-green-800',
+      completed: 'bg-emerald-100 text-emerald-800',
+      canceled: 'bg-red-100 text-red-800'
     }
     return colors[status as keyof typeof colors] || 'bg-gray-100 text-gray-800'
   }
@@ -162,7 +158,7 @@ export default function BookingsPage() {
       word.charAt(0).toUpperCase() + word.slice(1)
     ).join(' '),
     bookings: filteredBookings.filter(booking => booking.status === status),
-    color: STATUS_COLORS[status as keyof typeof STATUS_COLORS] || STATUS_COLORS.prospect
+    color: STATUS_COLORS[status as keyof typeof STATUS_COLORS] || STATUS_COLORS.pending
   }))
 
   return (
@@ -274,7 +270,7 @@ export default function BookingsPage() {
             <CardContent>
               <div className="text-2xl font-bold">
                 {filteredBookings.filter(b => 
-                  ['booked', 'content_due', 'submitted', 'approved'].includes(b.status)
+                  ['in_process', 'content_submitted', 'approved'].includes(b.status)
                 ).length}
               </div>
             </CardContent>
@@ -307,7 +303,7 @@ export default function BookingsPage() {
               <div className="text-2xl font-bold">
                 {filteredBookings.length > 0
                   ? Math.round(
-                      (filteredBookings.filter(b => ['posted', 'reported', 'paid'].includes(b.status)).length / filteredBookings.length) * 100
+                      (filteredBookings.filter(b => ['completed'].includes(b.status)).length / filteredBookings.length) * 100
                     )
                   : 0
                 }%
@@ -368,7 +364,7 @@ export default function BookingsPage() {
                           </div>
                           
                           <div className="text-xs text-gray-400 mb-3">
-                            Created {formatDate(booking.created_at)}
+                            Created {formatDate(new Date(booking.created_at))}
                           </div>
                           
                           <StatusSelect 
@@ -431,7 +427,7 @@ export default function BookingsPage() {
                         {booking.brief ? booking.brief.substring(0, 50) + '...' : '-'}
                       </TableCell>
                       <TableCell>
-                        {formatDate(booking.created_at)}
+                        {formatDate(new Date(booking.created_at))}
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-2">

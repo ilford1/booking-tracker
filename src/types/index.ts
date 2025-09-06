@@ -27,17 +27,12 @@ export interface PerformanceMetrics {
 
 // Constants for the app
 export const BOOKING_STATUSES = [
-  'prospect',
-  'outreaching', 
-  'negotiating',
-  'booked',
-  'content_due',
-  'submitted',
+  'pending',
+  'in_process',
+  'content_submitted',
   'approved',
-  'posted',
-  'reported',
-  'paid',
-  'archived'
+  'completed',
+  'canceled'
 ] as const
 
 export const DELIVERABLE_TYPES = [
@@ -115,18 +110,13 @@ export const FILE_SCOPES = [
 
 // Status colors for UI
 export const STATUS_COLORS = {
-  // Booking statuses
-  prospect: 'bg-gray-100 text-gray-800',
-  outreaching: 'bg-blue-100 text-blue-800',
-  negotiating: 'bg-yellow-100 text-yellow-800',
-  booked: 'bg-green-100 text-green-800',
-  content_due: 'bg-orange-100 text-orange-800',
-  submitted: 'bg-purple-100 text-purple-800',
-  approved: 'bg-emerald-100 text-emerald-800',
-  posted: 'bg-indigo-100 text-indigo-800',
-  reported: 'bg-cyan-100 text-cyan-800',
-  paid: 'bg-green-100 text-green-800',
-  archived: 'bg-gray-100 text-gray-800',
+  // Booking statuses (simplified)
+  pending: 'bg-yellow-100 text-yellow-800',
+  in_process: 'bg-blue-100 text-blue-800',
+  content_submitted: 'bg-purple-100 text-purple-800',
+  approved: 'bg-green-100 text-green-800',
+  completed: 'bg-emerald-100 text-emerald-800',
+  canceled: 'bg-red-100 text-red-800',
   
   // Deliverable statuses
   planned: 'bg-gray-100 text-gray-800',

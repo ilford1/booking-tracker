@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { AppShell } from '@/components/app-shell'
+import { EnhancedFileUpload } from '@/components/enhanced-file-upload'
+import { CreatorSubmissions } from '@/components/creator-submissions'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -58,7 +60,7 @@ const mockBooking = {
   creator_name: 'Sarah Johnson',
   creator_avatar: '',
   creator_handle: '@sarahj',
-  status: 'in_progress' as BookingStatus,
+  status: 'in_process' as BookingStatus,
   overall_progress: 40,
   
   // Dates
@@ -87,7 +89,7 @@ const mockBooking = {
       description: '5 Instagram stories',
       requirements: 'Behind-the-scenes content',
       deadline: new Date('2024-01-22'),
-      status: 'in_progress',
+      status: 'in_process',
       revision_count: 0
     },
     {
@@ -177,6 +179,7 @@ export default function BookingDetailsPage() {
   const [activeTab, setActiveTab] = useState('overview')
   const [newComment, setNewComment] = useState('')
   const [isInternalNote, setIsInternalNote] = useState(false)
+  const [creatorSubmissions, setCreatorSubmissions] = useState<any[]>([])
 
   // Status change handler
   const handleStatusChange = (newStatus: BookingStatus) => {
@@ -229,6 +232,55 @@ export default function BookingDetailsPage() {
 
     setNewComment('')
     toast.success('Comment added')
+  }
+
+  // Handle creator submission
+  const handleCreatorSubmission = (submission: any) => {
+    setCreatorSubmissions(prev => [submission, ...prev])
+    
+    // Add to timeline
+    const timelineEntry = {
+      id: `t${Date.now()}`,
+      event_type: 'deliverable_submitted' as const,
+      event_description: `Content submitted via ${submission.source_type.replace('_', ' ')}`,
+      created_by: booking.creator_name,
+      created_at: new Date()
+    }
+    
+    setBooking(prev => ({
+      ...prev,
+      timeline: [timelineEntry, ...prev.timeline]
+    }))
+  }
+
+  // Handle submission review
+  const handleSubmissionReview = (submissionId: string, status: string, notes?: string) => {
+    setCreatorSubmissions(prev => 
+      prev.map(sub => 
+        sub.id === submissionId 
+          ? { ...sub, status, reviewed_by: 'Current User', reviewed_at: new Date(), staff_notes: notes }
+          : sub
+      )
+    )
+  }
+
+  // Handle file download
+  const handleFileDownload = (submissionId: string, fileId: string) => {
+    // Mark file as downloaded
+    setCreatorSubmissions(prev => 
+      prev.map(sub => 
+        sub.id === submissionId 
+          ? {
+              ...sub,
+              files: sub.files.map((file: any) => 
+                file.id === fileId 
+                  ? { ...file, downloaded: true, download_date: new Date() }
+                  : file
+              )
+            }
+          : sub
+      )
+    )
   }
 
   // Get status badge color
@@ -339,6 +391,12 @@ export default function BookingDetailsPage() {
                 {booking.files.length}
               </Badge>
             </TabsTrigger>
+            <TabsTrigger value="submissions">
+              Creator Submissions
+              <Badge variant="secondary" className="ml-2">
+                {creatorSubmissions.length}
+              </Badge>
+            </TabsTrigger>
             <TabsTrigger value="comments">
               Comments
               <Badge variant="secondary" className="ml-2">
@@ -435,7 +493,7 @@ export default function BookingDetailsPage() {
                           <Badge variant={
                             deliverable.status === 'approved' ? 'default' :
                             deliverable.status === 'submitted' ? 'secondary' :
-                            deliverable.status === 'in_progress' ? 'outline' :
+                            deliverable.status === 'in_process' ? 'outline' :
                             'secondary'
                           }>
                             {deliverable.status.replace('_', ' ')}
@@ -554,6 +612,28 @@ export default function BookingDetailsPage() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Creator Submissions Tab */}
+          <TabsContent value="submissions">
+            <div className="space-y-6">
+              {/* Add New Submission */}
+              <EnhancedFileUpload
+                bookingId={booking.id}
+                creatorName={booking.creator_name}
+                deliverables={booking.deliverables}
+                onSubmissionAdded={handleCreatorSubmission}
+              />
+              
+              {/* Existing Submissions */}
+              <CreatorSubmissions
+                submissions={creatorSubmissions}
+                creatorName={booking.creator_name}
+                creatorAvatar={booking.creator_avatar}
+                onSubmissionReview={handleSubmissionReview}
+                onFileDownload={handleFileDownload}
+              />
+            </div>
           </TabsContent>
 
           {/* Comments Tab */}

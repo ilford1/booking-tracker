@@ -67,7 +67,7 @@ export function BookingForm({
     defaultValues: {
       campaign_id: prefilledCampaignId || 'none',
       creator_id: prefilledCreatorId || 'none',
-      status: 'prospect',
+      status: 'pending',
       offer_amount: undefined,
       agreed_amount: undefined,
       currency: 'VND',

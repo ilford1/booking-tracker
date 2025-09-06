@@ -240,7 +240,7 @@ export function CampaignsTable({ campaigns, onDelete, onSuccess, deletingId }: C
                     <div className="flex items-center gap-1">
                       <Calendar className="h-4 w-4 text-gray-500" />
                       <span className="text-sm">
-                        {formatDate(campaign.start_date)}
+                        {formatDate(new Date(campaign.start_date))}
                       </span>
                     </div>
                   ) : (
@@ -253,7 +253,7 @@ export function CampaignsTable({ campaigns, onDelete, onSuccess, deletingId }: C
                     <div className="flex items-center gap-1">
                       <Calendar className="h-4 w-4 text-gray-500" />
                       <span className="text-sm">
-                        {formatDate(campaign.end_date)}
+                        {formatDate(new Date(campaign.end_date))}
                       </span>
                     </div>
                   ) : (
@@ -263,7 +263,7 @@ export function CampaignsTable({ campaigns, onDelete, onSuccess, deletingId }: C
                 
                 <TableCell>
                   <span className="text-sm text-gray-600">
-                    {formatDate(campaign.created_at)}
+                    {formatDate(new Date(campaign.created_at))}
                   </span>
                 </TableCell>
                 

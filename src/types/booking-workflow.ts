@@ -1,16 +1,11 @@
-// Enhanced booking workflow types
+// Simplified booking workflow types - 6 states only
 export type BookingStatus = 
-  | 'draft'           // Initial creation, not submitted
-  | 'pending'         // Submitted, awaiting confirmation
-  | 'confirmed'       // Confirmed by creator
-  | 'in_progress'     // Work has started
+  | 'pending'         // Initial state - booking created, awaiting confirmation
+  | 'in_process'      // Booking confirmed and work is in progress
   | 'content_submitted' // Content delivered by creator
-  | 'under_review'    // Content being reviewed
-  | 'revision_requested' // Changes requested
   | 'approved'        // Content approved
   | 'completed'       // Fully completed
-  | 'cancelled'       // Cancelled
-  | 'on_hold'        // Temporarily paused
+  | 'canceled'        // Canceled
 
 export type DeliverableStatus =
   | 'not_started'
@@ -145,62 +140,34 @@ export interface EnhancedBooking {
   published_at?: Date
 }
 
-// Workflow configuration
+// Workflow configuration - Simplified to 6 states
 export const BOOKING_WORKFLOW_STEPS = [
   {
-    status: 'draft' as BookingStatus,
-    label: 'Draft',
-    description: 'Booking is being prepared',
-    next: ['pending', 'cancelled'] as BookingStatus[],
-    color: 'gray'
-  },
-  {
     status: 'pending' as BookingStatus,
-    label: 'Pending Confirmation',
-    description: 'Awaiting creator confirmation',
-    next: ['confirmed', 'cancelled'] as BookingStatus[],
+    label: 'Pending',
+    description: 'Awaiting confirmation',
+    next: ['in_process', 'canceled'] as BookingStatus[],
     color: 'yellow'
   },
   {
-    status: 'confirmed' as BookingStatus,
-    label: 'Confirmed',
-    description: 'Creator has confirmed the booking',
-    next: ['in_progress', 'cancelled', 'on_hold'] as BookingStatus[],
+    status: 'in_process' as BookingStatus,
+    label: 'In Process',
+    description: 'Work is in progress',
+    next: ['content_submitted', 'canceled'] as BookingStatus[],
     color: 'blue'
-  },
-  {
-    status: 'in_progress' as BookingStatus,
-    label: 'In Progress',
-    description: 'Creator is working on content',
-    next: ['content_submitted', 'cancelled', 'on_hold'] as BookingStatus[],
-    color: 'indigo'
   },
   {
     status: 'content_submitted' as BookingStatus,
     label: 'Content Submitted',
-    description: 'Content has been delivered',
-    next: ['under_review', 'in_progress'] as BookingStatus[],
+    description: 'Content has been submitted for review',
+    next: ['approved', 'in_process'] as BookingStatus[],
     color: 'purple'
-  },
-  {
-    status: 'under_review' as BookingStatus,
-    label: 'Under Review',
-    description: 'Content is being reviewed',
-    next: ['approved', 'revision_requested'] as BookingStatus[],
-    color: 'orange'
-  },
-  {
-    status: 'revision_requested' as BookingStatus,
-    label: 'Revision Requested',
-    description: 'Changes have been requested',
-    next: ['in_progress', 'content_submitted'] as BookingStatus[],
-    color: 'red'
   },
   {
     status: 'approved' as BookingStatus,
     label: 'Approved',
     description: 'Content has been approved',
-    next: ['completed'] as BookingStatus[],
+    next: ['completed', 'in_process'] as BookingStatus[],
     color: 'green'
   },
   {
@@ -211,18 +178,11 @@ export const BOOKING_WORKFLOW_STEPS = [
     color: 'green'
   },
   {
-    status: 'cancelled' as BookingStatus,
-    label: 'Cancelled',
-    description: 'Booking has been cancelled',
+    status: 'canceled' as BookingStatus,
+    label: 'Canceled',
+    description: 'Booking has been canceled',
     next: [] as BookingStatus[],
     color: 'red'
-  },
-  {
-    status: 'on_hold' as BookingStatus,
-    label: 'On Hold',
-    description: 'Booking is temporarily paused',
-    next: ['in_progress', 'cancelled'] as BookingStatus[],
-    color: 'gray'
   }
 ]
 
@@ -249,17 +209,12 @@ export function getStatusLabel(status: BookingStatus): string {
 
 export function calculateBookingProgress(booking: Partial<EnhancedBooking>): number {
   const weights = {
-    draft: 0,
     pending: 10,
-    confirmed: 20,
-    in_progress: 40,
-    content_submitted: 60,
-    under_review: 70,
-    revision_requested: 65,
+    in_process: 40,
+    content_submitted: 70,
     approved: 90,
     completed: 100,
-    cancelled: 0,
-    on_hold: -1 // Keep previous progress
+    canceled: 0
   }
   
   return weights[booking.status as BookingStatus] || 0

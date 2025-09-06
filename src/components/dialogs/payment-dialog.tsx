@@ -109,14 +109,14 @@ export function PaymentViewDialog({ payment, trigger, onUpdate }: PaymentViewDia
               <Label className="text-sm font-medium text-gray-700">Due Date</Label>
               <div className="flex items-center gap-2 mt-1">
                 <Calendar className="h-4 w-4 text-gray-400" />
-                <span>{payment.due_date ? formatDate(payment.due_date) : 'Not set'}</span>
+                <span>{payment.due_date ? formatDate(new Date(payment.due_date)) : 'Not set'}</span>
               </div>
             </div>
             <div>
               <Label className="text-sm font-medium text-gray-700">Paid Date</Label>
               <div className="flex items-center gap-2 mt-1">
                 <Calendar className="h-4 w-4 text-gray-400" />
-                <span>{payment.paid_at ? formatDate(payment.paid_at) : 'Not paid'}</span>
+                <span>{payment.paid_at ? formatDate(new Date(payment.paid_at)) : 'Not paid'}</span>
               </div>
             </div>
           </div>

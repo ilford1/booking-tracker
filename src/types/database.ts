@@ -37,17 +37,12 @@ export type Campaign = {
 }
 
 export type BookingStatus = 
-  | 'prospect' 
-  | 'outreaching' 
-  | 'negotiating' 
-  | 'booked' 
-  | 'content_due' 
-  | 'submitted' 
-  | 'approved' 
-  | 'posted' 
-  | 'reported' 
-  | 'paid' 
-  | 'archived'
+  | 'pending'
+  | 'in_process'
+  | 'content_submitted'
+  | 'approved'
+  | 'completed'
+  | 'canceled'
 
 export type Booking = {
   id: string
