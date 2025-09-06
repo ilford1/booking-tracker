@@ -52,9 +52,22 @@ const localizer = dateFnsLocalizer({
 interface EnhancedCalendarProps {
   events: CalendarEvent[]
   onEventUpdate?: () => void
-  initialFilters?: CalendarFilters
+  initialFilters?: Partial<CalendarFilters>
   initialView?: View
   showEventList?: boolean
+}
+
+const defaultFilters: CalendarFilters = {
+  event_types: [],
+  statuses: [],
+  priorities: [],
+  booking_statuses: [],
+  creator_ids: [],
+  campaign_ids: [],
+  date_range: {
+    start: new Date(new Date().setMonth(new Date().getMonth() - 1)),
+    end: new Date(new Date().setMonth(new Date().getMonth() + 1))
+  }
 }
 
 export function EnhancedCalendar({
@@ -67,7 +80,7 @@ export function EnhancedCalendar({
   const [currentView, setCurrentView] = useState<View>(initialView)
   const [currentDate, setCurrentDate] = useState(new Date())
   const [searchQuery, setSearchQuery] = useState('')
-  const [filters, setFilters] = useState<CalendarFilters>(initialFilters)
+  const [filters, setFilters] = useState<CalendarFilters>({ ...defaultFilters, ...initialFilters })
   const [viewPreferences, setViewPreferences] = useState<{
     showOverdueOnly: boolean
     showPriorityColors: boolean
@@ -96,28 +109,28 @@ export function EnhancedCalendar({
     }
 
     // Apply status filter
-    if (filters.status && filters.status.length > 0) {
-      filtered = filtered.filter(event => filters.status!.includes(event.status))
+    if (filters.statuses && filters.statuses.length > 0) {
+      filtered = filtered.filter(event => filters.statuses.includes(event.status))
     }
 
     // Apply priority filter
-    if (filters.priority && filters.priority.length > 0) {
-      filtered = filtered.filter(event => filters.priority!.includes(event.priority))
+    if (filters.priorities && filters.priorities.length > 0) {
+      filtered = filtered.filter(event => filters.priorities.includes(event.priority))
     }
 
     // Apply type filter
-    if (filters.eventType && filters.eventType.length > 0) {
-      filtered = filtered.filter(event => filters.eventType!.includes(event.type))
+    if (filters.event_types && filters.event_types.length > 0) {
+      filtered = filtered.filter(event => filters.event_types.includes(event.type))
     }
 
     // Apply creator filter
-    if (filters.creatorId) {
-      filtered = filtered.filter(event => event.creator_id === filters.creatorId)
+    if (filters.creator_ids && filters.creator_ids.length > 0) {
+      filtered = filtered.filter(event => filters.creator_ids.includes(event.creator_id || ''))
     }
 
     // Apply campaign filter
-    if (filters.campaignId) {
-      filtered = filtered.filter(event => event.campaign_id === filters.campaignId)
+    if (filters.campaign_ids && filters.campaign_ids.length > 0) {
+      filtered = filtered.filter(event => filters.campaign_ids.includes(event.campaign_id || ''))
     }
 
     // Apply overdue only filter
@@ -245,8 +258,8 @@ export function EnhancedCalendar({
             />
           </div>
           
-          <Select value={filters.status?.[0] || 'all'} onValueChange={(value) => 
-            setFilters(prev => ({ ...prev, status: value && value !== 'all' ? [value] : undefined }))
+          <Select value={filters.statuses?.[0] || 'all'} onValueChange={(value) => 
+            setFilters(prev => ({ ...prev, statuses: value && value !== 'all' ? [value as any] : [] }))
           }>
             <SelectTrigger className="w-32">
               <SelectValue placeholder="Status" />
@@ -260,8 +273,8 @@ export function EnhancedCalendar({
             </SelectContent>
           </Select>
           
-          <Select value={filters.priority?.[0] || 'all'} onValueChange={(value) => 
-            setFilters(prev => ({ ...prev, priority: value && value !== 'all' ? [value] : undefined }))
+          <Select value={filters.priorities?.[0] || 'all'} onValueChange={(value) => 
+            setFilters(prev => ({ ...prev, priorities: value && value !== 'all' ? [value as any] : [] }))
           }>
             <SelectTrigger className="w-32">
               <SelectValue placeholder="Priority" />
