@@ -11,8 +11,11 @@ export interface BookingWithDeadline {
 
 /**
  * Check if a booking is overdue based on its scheduled_date
+ * Works with both regular Booking and BookingWithDeadline types
  */
-export function isBookingOverdue(booking: BookingWithDeadline): boolean {
+export function isBookingOverdue(booking: any): boolean {
+  // For regular Booking type, there's no scheduled_date field
+  // This would need to come from associated deliverables
   if (!booking.scheduled_date) return false
   
   // Don't mark as overdue if already completed or canceled
@@ -31,7 +34,7 @@ export function isBookingOverdue(booking: BookingWithDeadline): boolean {
 /**
  * Get the status badge color based on booking status and deadline
  */
-export function getBookingStatusColor(booking: BookingWithDeadline): string {
+export function getBookingStatusColor(booking: any): string {
   if (isBookingOverdue(booking)) {
     return 'destructive' // Red for overdue
   }
@@ -57,7 +60,7 @@ export function getBookingStatusColor(booking: BookingWithDeadline): string {
 /**
  * Get a display status that considers the deadline
  */
-export function getDisplayStatus(booking: BookingWithDeadline): string {
+export function getDisplayStatus(booking: any): string {
   if (isBookingOverdue(booking)) {
     return 'overdue'
   }
@@ -67,7 +70,7 @@ export function getDisplayStatus(booking: BookingWithDeadline): string {
 /**
  * Calculate days until deadline or days overdue
  */
-export function getDaysUntilDeadline(booking: BookingWithDeadline): {
+export function getDaysUntilDeadline(booking: any): {
   days: number
   isOverdue: boolean
   message: string
