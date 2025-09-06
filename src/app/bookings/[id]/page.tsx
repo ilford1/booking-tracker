@@ -175,41 +175,96 @@ const mockBooking = {
 export default function BookingDetailsPage() {
   const params = useParams()
   const router = useRouter()
-  const [booking, setBooking] = useState(mockBooking)
+  const [booking, setBooking] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('overview')
   const [newComment, setNewComment] = useState('')
   const [isInternalNote, setIsInternalNote] = useState(false)
   const [creatorSubmissions, setCreatorSubmissions] = useState<any[]>([])
 
-  // Status change handler
-  const handleStatusChange = (newStatus: BookingStatus) => {
+  // Fetch booking data on component mount
+  useEffect(() => {
+    const fetchBooking = async () => {
+      try {
+        const { getBooking } = await import('@/lib/actions/bookings')
+        const bookingData = await getBooking(params.id as string)
+        
+        if (bookingData) {
+          // Merge with mock extended data for now (until we have full enhanced booking schema)
+          const enhancedBooking = {
+            ...bookingData,
+            creator_name: bookingData.creator?.name || 'Unknown Creator',
+            creator_handle: bookingData.creator?.handle || '@unknown',
+            creator_avatar: '', // No avatar in current schema
+            campaign_name: bookingData.campaign?.name || 'Unknown Campaign',
+            overall_progress: calculateBookingProgress({ status: bookingData.status }),
+            
+            // Use mock data for enhanced features that don't exist in DB yet
+            deliverables: mockBooking.deliverables,
+            timeline: mockBooking.timeline,
+            comments: mockBooking.comments,
+            files: mockBooking.files
+          }
+          setBooking(enhancedBooking)
+        } else {
+          toast.error('Booking not found')
+          router.push('/bookings')
+        }
+      } catch (error) {
+        console.error('Failed to fetch booking:', error)
+        toast.error('Failed to load booking data')
+        router.push('/bookings')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    if (params.id) {
+      fetchBooking()
+    }
+  }, [params.id, router])
+
+  // Status change handler - now with database persistence
+  const handleStatusChange = async (newStatus: BookingStatus) => {
     const validStatuses = getNextValidStatuses(booking.status)
     if (!validStatuses.includes(newStatus)) {
       toast.error('Invalid status transition')
       return
     }
 
-    setBooking(prev => ({
-      ...prev,
-      status: newStatus,
-      overall_progress: calculateBookingProgress({ status: newStatus })
-    }))
+    try {
+      // Import the updateBookingStatus function
+      const { updateBookingStatus } = await import('@/lib/actions/bookings')
+      
+      // Update in database
+      await updateBookingStatus(booking.id, newStatus)
+      
+      // Update local state for immediate UI feedback
+      setBooking((prev: any) => ({
+        ...prev,
+        status: newStatus,
+        overall_progress: calculateBookingProgress({ status: newStatus })
+      }))
 
-    // Add to timeline
-    const newTimelineEntry = {
-      id: `t${Date.now()}`,
-      event_type: 'status_change' as const,
-      event_description: `Status changed to ${getStatusLabel(newStatus)}`,
-      created_by: 'Current User',
-      created_at: new Date()
+      // Add to timeline (local state only for now)
+      const newTimelineEntry = {
+        id: `t${Date.now()}`,
+        event_type: 'status_change' as const,
+        event_description: `Status changed to ${getStatusLabel(newStatus)}`,
+        created_by: 'Current User',
+        created_at: new Date()
+      }
+
+      setBooking((prev: any) => ({
+        ...prev,
+        timeline: [...prev.timeline, newTimelineEntry]
+      }))
+
+      toast.success(`Status updated to ${getStatusLabel(newStatus)}`)
+    } catch (error) {
+      console.error('Failed to update booking status:', error)
+      toast.error('Failed to update booking status')
     }
-
-    setBooking(prev => ({
-      ...prev,
-      timeline: [...prev.timeline, newTimelineEntry]
-    }))
-
-    toast.success(`Status updated to ${getStatusLabel(newStatus)}`)
   }
 
   // Add comment handler
@@ -225,7 +280,7 @@ export default function BookingDetailsPage() {
       is_internal: isInternalNote
     }
 
-    setBooking(prev => ({
+    setBooking((prev: any) => ({
       ...prev,
       comments: [...prev.comments, comment]
     }))
@@ -247,7 +302,7 @@ export default function BookingDetailsPage() {
       created_at: new Date()
     }
     
-    setBooking(prev => ({
+    setBooking((prev: any) => ({
       ...prev,
       timeline: [timelineEntry, ...prev.timeline]
     }))
@@ -285,9 +340,9 @@ export default function BookingDetailsPage() {
 
   // Handle deliverable actions
   const handleDeliverableApprove = (deliverableId: string) => {
-    setBooking(prev => ({
+    setBooking((prev: any) => ({
       ...prev,
-      deliverables: prev.deliverables.map(d => 
+      deliverables: prev.deliverables.map((d: any) => 
         d.id === deliverableId 
           ? { ...d, status: 'approved', approved_at: new Date(), approved_by: 'Current User' }
           : d
@@ -300,9 +355,9 @@ export default function BookingDetailsPage() {
     const reason = prompt('Please provide revision notes:')
     if (reason === null) return // User cancelled
     
-    setBooking(prev => ({
+    setBooking((prev: any) => ({
       ...prev,
-      deliverables: prev.deliverables.map(d => 
+      deliverables: prev.deliverables.map((d: any) => 
         d.id === deliverableId 
           ? { 
               ...d, 
@@ -317,9 +372,9 @@ export default function BookingDetailsPage() {
   }
 
   const handleDeliverableStart = (deliverableId: string) => {
-    setBooking(prev => ({
+    setBooking((prev: any) => ({
       ...prev,
-      deliverables: prev.deliverables.map(d => 
+      deliverables: prev.deliverables.map((d: any) => 
         d.id === deliverableId 
           ? { ...d, status: 'in_progress' }
           : d
@@ -359,6 +414,37 @@ export default function BookingDetailsPage() {
     }
     const color = getStatusColor(status)
     return colorMap[color] || 'secondary'
+  }
+
+  // Show loading state
+  if (loading) {
+    return (
+      <AppShell>
+        <div className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+              <p className="mt-2 text-sm text-gray-600">Loading booking details...</p>
+            </div>
+          </div>
+        </div>
+      </AppShell>
+    )
+  }
+
+  // Show error state if no booking
+  if (!booking) {
+    return (
+      <AppShell>
+        <div className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+          <div className="text-center py-12">
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Booking not found</h3>
+            <p className="text-gray-500 mb-4">The booking you're looking for doesn't exist.</p>
+            <Button onClick={() => router.push('/bookings')}>Back to Bookings</Button>
+          </div>
+        </div>
+      </AppShell>
+    )
   }
 
   return (
@@ -516,14 +602,14 @@ export default function BookingDetailsPage() {
                     <div className="flex items-center gap-2 mt-1">
                       <Progress 
                         value={
-                          (booking.deliverables.filter(d => 
+                          (booking.deliverables.filter((d: any) => 
                             d.status === 'approved' || d.status === 'published'
                           ).length / booking.deliverables.length) * 100
                         } 
                         className="h-2 flex-1" 
                       />
                       <span className="text-sm font-medium">
-                        {booking.deliverables.filter(d => 
+                        {booking.deliverables.filter((d: any) => 
                           d.status === 'approved' || d.status === 'published'
                         ).length}/{booking.deliverables.length}
                       </span>
@@ -538,7 +624,7 @@ export default function BookingDetailsPage() {
                   <div>
                     <p className="text-sm text-gray-500">Total Revisions</p>
                     <p className="text-2xl font-bold">
-                      {booking.deliverables.reduce((sum, d) => sum + d.revision_count, 0)}
+                      {booking.deliverables.reduce((sum: number, d: any) => sum + d.revision_count, 0)}
                     </p>
                   </div>
                 </CardContent>
@@ -549,7 +635,7 @@ export default function BookingDetailsPage() {
           {/* Deliverables Tab */}
           <TabsContent value="deliverables">
             <div className="space-y-4">
-              {booking.deliverables.map(deliverable => (
+              {booking.deliverables.map((deliverable: any) => (
                 <Card key={deliverable.id}>
                   <CardContent className="pt-6">
                     <div className="flex items-start justify-between">
@@ -631,7 +717,7 @@ export default function BookingDetailsPage() {
             <Card>
               <CardContent className="pt-6">
                 <div className="space-y-4">
-                  {booking.timeline.map((event, index) => (
+                  {booking.timeline.map((event: any, index: number) => (
                     <div key={event.id} className="flex gap-4">
                       <div className="flex flex-col items-center">
                         <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
@@ -673,7 +759,7 @@ export default function BookingDetailsPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {booking.files.map(file => (
+                  {booking.files.map((file: any) => (
                     <div key={file.id} className="flex items-center justify-between p-3 border rounded-lg">
                       <div className="flex items-center gap-3">
                         <FileText className="h-8 w-8 text-gray-400" />
@@ -728,7 +814,7 @@ export default function BookingDetailsPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4 mb-6">
-                  {booking.comments.map(comment => (
+                  {booking.comments.map((comment: any) => (
                     <div key={comment.id} className="flex gap-3">
                       <Avatar className="h-8 w-8">
                         <AvatarFallback>{comment.user_name[0]}</AvatarFallback>
