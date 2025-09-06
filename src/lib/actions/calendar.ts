@@ -309,7 +309,7 @@ function getBookingStatusColor(status: BookingStatus): string {
 }
 
 function getDeliverableStatusColor(status: string): string {
-  const colors = {
+  const colors: Record<string, string> = {
     planned: '#6b7280',      // gray
     due: '#f59e0b',          // yellow
     submitted: '#8b5cf6',    // purple
