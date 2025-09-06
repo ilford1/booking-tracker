@@ -283,6 +283,68 @@ export default function BookingDetailsPage() {
     )
   }
 
+  // Handle deliverable actions
+  const handleDeliverableApprove = (deliverableId: string) => {
+    setBooking(prev => ({
+      ...prev,
+      deliverables: prev.deliverables.map(d => 
+        d.id === deliverableId 
+          ? { ...d, status: 'approved', approved_at: new Date(), approved_by: 'Current User' }
+          : d
+      )
+    }))
+    toast.success('Deliverable approved')
+  }
+
+  const handleDeliverableRevision = (deliverableId: string) => {
+    const reason = prompt('Please provide revision notes:')
+    if (reason === null) return // User cancelled
+    
+    setBooking(prev => ({
+      ...prev,
+      deliverables: prev.deliverables.map(d => 
+        d.id === deliverableId 
+          ? { 
+              ...d, 
+              status: 'revision_requested', 
+              revision_count: d.revision_count + 1,
+              notes: reason 
+            }
+          : d
+      )
+    }))
+    toast.success('Revision requested')
+  }
+
+  const handleDeliverableStart = (deliverableId: string) => {
+    setBooking(prev => ({
+      ...prev,
+      deliverables: prev.deliverables.map(d => 
+        d.id === deliverableId 
+          ? { ...d, status: 'in_progress' }
+          : d
+      )
+    }))
+    toast.success('Deliverable started')
+  }
+
+  // Handle booking file download
+  const handleBookingFileDownload = (fileId: string, fileName: string) => {
+    // In a real app, this would trigger an actual download
+    toast.success(`Downloading ${fileName}`)
+  }
+
+  // Handle file upload
+  const handleFileUpload = () => {
+    // In a real app, this would open a file picker
+    toast.info('File upload functionality would be implemented here')
+  }
+
+  // Handle booking edit
+  const handleBookingEdit = () => {
+    toast.info('Booking edit functionality would be implemented here')
+  }
+
   // Get status badge color
   const getStatusBadgeVariant = (status: BookingStatus): "default" | "secondary" | "destructive" | "outline" => {
     const colorMap: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -335,7 +397,11 @@ export default function BookingDetailsPage() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={handleBookingEdit}
+              >
                 <Edit className="h-4 w-4 mr-2" />
                 Edit
               </Button>
@@ -527,16 +593,27 @@ export default function BookingDetailsPage() {
                       <div className="flex items-center gap-2">
                         {deliverable.status === 'submitted' && (
                           <>
-                            <Button size="sm" variant="outline">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => handleDeliverableRevision(deliverable.id)}
+                            >
                               Request Revision
                             </Button>
-                            <Button size="sm">
+                            <Button 
+                              size="sm"
+                              onClick={() => handleDeliverableApprove(deliverable.id)}
+                            >
                               Approve
                             </Button>
                           </>
                         )}
                         {deliverable.status === 'not_started' && (
-                          <Button size="sm" variant="outline">
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => handleDeliverableStart(deliverable.id)}
+                          >
                             <PlayCircle className="h-4 w-4 mr-2" />
                             Start
                           </Button>
@@ -585,7 +662,10 @@ export default function BookingDetailsPage() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle>Files & Attachments</CardTitle>
-                  <Button size="sm">
+                  <Button 
+                    size="sm"
+                    onClick={handleFileUpload}
+                  >
                     <Upload className="h-4 w-4 mr-2" />
                     Upload File
                   </Button>
@@ -604,7 +684,11 @@ export default function BookingDetailsPage() {
                           </p>
                         </div>
                       </div>
-                      <Button size="sm" variant="ghost">
+                      <Button 
+                        size="sm" 
+                        variant="ghost"
+                        onClick={() => handleBookingFileDownload(file.id, file.file_name)}
+                      >
                         <Download className="h-4 w-4" />
                       </Button>
                     </div>
