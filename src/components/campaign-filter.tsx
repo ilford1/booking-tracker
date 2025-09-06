@@ -80,12 +80,12 @@ export function CampaignFilter({
                 <SelectItem key={campaign.id} value={campaign.id}>
                   <div className="flex items-center justify-between w-full">
                     <span>{campaign.name}</span>
-                    {campaign.status && (
+                    {(campaign as any).status && (
                       <Badge 
-                        variant={campaign.status === 'active' ? 'default' : 'secondary'}
+                        variant={(campaign as any).status === 'active' ? 'default' : 'secondary'}
                         className="ml-2 text-xs"
                       >
-                        {campaign.status}
+                        {(campaign as any).status}
                       </Badge>
                     )}
                   </div>
