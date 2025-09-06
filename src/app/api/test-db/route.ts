@@ -4,8 +4,7 @@ import { cookies } from 'next/headers'
 
 export async function GET() {
   try {
-    const cookieStore = cookies()
-    const supabase = createClient(cookieStore)
+    const supabase = await createClient()
     
     // Test which tables exist
     const tables = ['bookings', 'campaigns', 'notifications', 'user_profiles']
