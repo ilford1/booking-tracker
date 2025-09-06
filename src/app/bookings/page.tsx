@@ -400,7 +400,7 @@ export default function BookingsPage() {
                               {formatCurrency(booking.agreed_amount || booking.offer_amount || 0)}
                             </div>
                             
-                            {booking.scheduled_date && (
+                            {(booking as any).scheduled_date && (
                               <div className="flex items-center gap-1 text-xs">
                                 <Clock className="h-3 w-3" />
                                 <span className={getDaysUntilDeadline(booking).isOverdue ? 'text-red-600 font-medium' : 'text-gray-500'}>
@@ -409,9 +409,9 @@ export default function BookingsPage() {
                               </div>
                             )}
                             
-                            {booking.content_type && (
+                            {(booking as any).content_type && (
                               <div className="text-xs text-gray-500">
-                                Content: {booking.content_type}
+                                Content: {(booking as any).content_type}
                               </div>
                             )}
                             
