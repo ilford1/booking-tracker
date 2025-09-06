@@ -12,6 +12,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Progress } from '@/components/ui/progress'
 import { Separator } from '@/components/ui/separator'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { toast } from 'sonner'
 import {
   BookingStatus,
@@ -48,129 +56,16 @@ import {
   Image,
   Video,
   Link,
-  Star
+  Star,
+  Copy,
+  Printer,
+  Share2,
+  Archive,
+  Trash2,
+  Plus
 } from 'lucide-react'
 
-// Mock data for demonstration
-const mockBooking = {
-  id: '1',
-  campaign_id: 'campaign-1',
-  campaign_name: 'Summer Collection 2024',
-  creator_id: 'creator-1',
-  creator_name: 'Sarah Johnson',
-  creator_avatar: '',
-  creator_handle: '@sarahj',
-  status: 'in_process' as BookingStatus,
-  overall_progress: 40,
-  
-  // Dates
-  created_at: new Date('2024-01-10'),
-  confirmed_at: new Date('2024-01-11'),
-  deadline: new Date('2024-01-25'),
-  
-  // Deliverables
-  deliverables: [
-    {
-      id: 'd1',
-      type: 'post',
-      platform: 'instagram',
-      description: '3 Instagram feed posts',
-      requirements: 'High-quality photos featuring summer collection',
-      deadline: new Date('2024-01-20'),
-      status: 'submitted',
-      submission_url: 'https://instagram.com/p/example',
-      submitted_at: new Date('2024-01-18'),
-      revision_count: 1
-    },
-    {
-      id: 'd2',
-      type: 'story',
-      platform: 'instagram',
-      description: '5 Instagram stories',
-      requirements: 'Behind-the-scenes content',
-      deadline: new Date('2024-01-22'),
-      status: 'in_process',
-      revision_count: 0
-    },
-    {
-      id: 'd3',
-      type: 'reel',
-      platform: 'instagram',
-      description: '1 Instagram Reel',
-      requirements: 'Trendy transition video showcasing outfits',
-      deadline: new Date('2024-01-25'),
-      status: 'not_started',
-      revision_count: 0
-    }
-  ],
-  
-  // Timeline
-  timeline: [
-    {
-      id: 't1',
-      event_type: 'status_change',
-      event_description: 'Booking created',
-      created_by: 'Admin',
-      created_at: new Date('2024-01-10T10:00:00')
-    },
-    {
-      id: 't2',
-      event_type: 'status_change',
-      event_description: 'Booking confirmed by creator',
-      created_by: 'Sarah Johnson',
-      created_at: new Date('2024-01-11T14:30:00')
-    },
-    {
-      id: 't3',
-      event_type: 'deliverable_submitted',
-      event_description: 'Instagram posts submitted for review',
-      created_by: 'Sarah Johnson',
-      created_at: new Date('2024-01-18T16:00:00')
-    }
-  ],
-  
-  // Comments
-  comments: [
-    {
-      id: 'c1',
-      user_name: 'Admin',
-      user_role: 'Manager',
-      comment: 'Please ensure all content aligns with our brand guidelines.',
-      created_at: new Date('2024-01-11T15:00:00'),
-      is_internal: false
-    },
-    {
-      id: 'c2',
-      user_name: 'Sarah Johnson',
-      user_role: 'Creator',
-      comment: 'Understood! I\'ll start working on the content today.',
-      created_at: new Date('2024-01-11T16:00:00'),
-      is_internal: false
-    }
-  ],
-  
-  // Files
-  files: [
-    {
-      id: 'f1',
-      file_name: 'brand-guidelines.pdf',
-      file_type: 'application/pdf',
-      file_size: 2500000,
-      uploaded_by: 'Admin',
-      uploaded_at: new Date('2024-01-10T11:00:00'),
-      category: 'brief'
-    },
-    {
-      id: 'f2',
-      file_name: 'content-examples.zip',
-      file_type: 'application/zip',
-      file_size: 15000000,
-      uploaded_by: 'Admin',
-      uploaded_at: new Date('2024-01-10T11:30:00'),
-      category: 'brief'
-    }
-  ]
-}
+// Note: Mock data removed - now loading real data from database
 
 export default function BookingDetailsPage() {
   const params = useParams()
@@ -187,10 +82,15 @@ export default function BookingDetailsPage() {
     const fetchBooking = async () => {
       try {
         const { getBooking } = await import('@/lib/actions/bookings')
+        const { getDeliverablesByBooking } = await import('@/lib/actions/deliverables')
+        
         const bookingData = await getBooking(params.id as string)
         
         if (bookingData) {
-          // Merge with mock extended data for now (until we have full enhanced booking schema)
+          // Fetch deliverables for this booking
+          const deliverables = await getDeliverablesByBooking(params.id as string)
+          
+          // Merge with extended data
           const enhancedBooking = {
             ...bookingData,
             creator_name: bookingData.creator?.name || 'Unknown Creator',
@@ -199,11 +99,13 @@ export default function BookingDetailsPage() {
             campaign_name: bookingData.campaign?.name || 'Unknown Campaign',
             overall_progress: calculateBookingProgress({ status: bookingData.status }),
             
-            // Use mock data for enhanced features that don't exist in DB yet
-            deliverables: mockBooking.deliverables,
-            timeline: mockBooking.timeline,
-            comments: mockBooking.comments,
-            files: mockBooking.files
+            // Real data from database
+            deliverables: deliverables || [],
+            
+            // Empty arrays for features not yet in database
+            timeline: [],
+            comments: [],
+            files: []
           }
           setBooking(enhancedBooking)
         } else {
@@ -383,6 +285,32 @@ export default function BookingDetailsPage() {
     toast.success('Deliverable started')
   }
 
+  // Handle deliverable deletion
+  const handleDeliverableDelete = async (deliverableId: string) => {
+    try {
+      if (confirm('Are you sure you want to delete this deliverable? This action cannot be undone.')) {
+        // If we have real deliverables from database, delete via API
+        if (booking.deliverables.find((d: any) => d.id === deliverableId && !d.id.startsWith('d'))) {
+          const { deleteDeliverable } = await import('@/lib/actions/deliverables')
+          await deleteDeliverable(deliverableId)
+          toast.success('Deliverable deleted successfully')
+        } else {
+          // For mock data, just remove from state
+          toast.success('Deliverable removed')
+        }
+        
+        // Remove from local state
+        setBooking((prev: any) => ({
+          ...prev,
+          deliverables: prev.deliverables.filter((d: any) => d.id !== deliverableId)
+        }))
+      }
+    } catch (error) {
+      console.error('Failed to delete deliverable:', error)
+      toast.error('Failed to delete deliverable')
+    }
+  }
+
   // Handle booking file download
   const handleBookingFileDownload = (fileId: string, fileName: string) => {
     // In a real app, this would trigger an actual download
@@ -395,9 +323,98 @@ export default function BookingDetailsPage() {
     toast.info('File upload functionality would be implemented here')
   }
 
-  // Handle booking edit
-  const handleBookingEdit = () => {
-    toast.info('Booking edit functionality would be implemented here')
+  // Handle duplicate booking
+  const handleDuplicate = async () => {
+    try {
+      toast.loading('Duplicating booking...')
+      // TODO: Implement booking duplication
+      toast.info('Duplicate functionality would be implemented here')
+    } catch (error) {
+      toast.error('Failed to duplicate booking')
+    }
+  }
+
+  // Handle export booking details
+  const handleExport = () => {
+    try {
+      // Create a JSON export of the booking data
+      const exportData = {
+        booking: booking,
+        exported_at: new Date().toISOString(),
+        version: '1.0'
+      }
+      
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `booking-${booking.id}-${new Date().toISOString().split('T')[0]}.json`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      
+      toast.success('Booking details exported')
+    } catch (error) {
+      toast.error('Failed to export booking details')
+    }
+  }
+
+  // Handle print
+  const handlePrint = () => {
+    window.print()
+    toast.success('Print dialog opened')
+  }
+
+  // Handle share link
+  const handleShare = async () => {
+    const shareUrl = `${window.location.origin}/bookings/${booking.id}`
+    
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `Booking: ${booking.campaign_name}`,
+          text: `Check out this booking for ${booking.creator_name}`,
+          url: shareUrl
+        })
+        toast.success('Link shared successfully')
+      } catch (error) {
+        // User cancelled share, do nothing
+      }
+    } else {
+      // Fallback to clipboard
+      await navigator.clipboard.writeText(shareUrl)
+      toast.success('Link copied to clipboard')
+    }
+  }
+
+  // Handle archive booking
+  const handleArchive = async () => {
+    try {
+      if (confirm('Are you sure you want to archive this booking?')) {
+        toast.loading('Archiving booking...')
+        // TODO: Implement booking archiving
+        toast.info('Archive functionality would be implemented here')
+        // router.push('/bookings')
+      }
+    } catch (error) {
+      toast.error('Failed to archive booking')
+    }
+  }
+
+  // Handle delete booking
+  const handleDelete = async () => {
+    try {
+      if (confirm('Are you sure you want to delete this booking? This action cannot be undone.')) {
+        toast.loading('Deleting booking...')
+        const { deleteBooking } = await import('@/lib/actions/bookings')
+        await deleteBooking(booking.id)
+        toast.success('Booking deleted successfully')
+        router.push('/bookings')
+      }
+    } catch (error) {
+      toast.error('Failed to delete booking')
+    }
   }
 
   // Get status badge color
@@ -483,17 +500,59 @@ export default function BookingDetailsPage() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={handleBookingEdit}
-              >
-                <Edit className="h-4 w-4 mr-2" />
-                Edit
-              </Button>
-              <Button variant="outline" size="sm">
-                <MoreVertical className="h-4 w-4" />
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  
+                  <DropdownMenuItem onClick={() => toast.info('Edit functionality would be implemented here')}>
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit Booking
+                  </DropdownMenuItem>
+                  
+                  <DropdownMenuItem onClick={handleDuplicate}>
+                    <Copy className="h-4 w-4 mr-2" />
+                    Duplicate Booking
+                  </DropdownMenuItem>
+                  
+                  <DropdownMenuItem onClick={handleExport}>
+                    <Download className="h-4 w-4 mr-2" />
+                    Export Details
+                  </DropdownMenuItem>
+                  
+                  <DropdownMenuItem onClick={handlePrint}>
+                    <Printer className="h-4 w-4 mr-2" />
+                    Print Summary
+                  </DropdownMenuItem>
+                  
+                  <DropdownMenuItem onClick={handleShare}>
+                    <Share2 className="h-4 w-4 mr-2" />
+                    Share Link
+                  </DropdownMenuItem>
+                  
+                  <DropdownMenuSeparator />
+                  
+                  <DropdownMenuItem onClick={handleArchive}>
+                    <Archive className="h-4 w-4 mr-2" />
+                    Archive Booking
+                  </DropdownMenuItem>
+                  
+                  <DropdownMenuSeparator />
+                  
+                  <DropdownMenuItem 
+                    onClick={handleDelete}
+                    className="text-red-600 focus:text-red-600"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete Booking
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </div>
@@ -570,13 +629,13 @@ export default function BookingDetailsPage() {
                     <div>
                       <p className="text-sm text-gray-500">Created</p>
                       <p className="font-medium">
-                        {booking.created_at.toLocaleDateString()}
+                        {new Date(booking.created_at).toLocaleDateString()}
                       </p>
                     </div>
                     <div>
                       <p className="text-sm text-gray-500">Deadline</p>
                       <p className="font-medium">
-                        {booking.deadline.toLocaleDateString()}
+                        {booking.deadline ? new Date(booking.deadline).toLocaleDateString() : 'Not set'}
                       </p>
                     </div>
                     <div>
@@ -618,7 +677,7 @@ export default function BookingDetailsPage() {
                   <div>
                     <p className="text-sm text-gray-500">Days Remaining</p>
                     <p className="text-2xl font-bold">
-                      {Math.ceil((booking.deadline.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))}
+                      {booking.deadline ? Math.ceil((new Date(booking.deadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : 'N/A'}
                     </p>
                   </div>
                   <div>
@@ -635,7 +694,40 @@ export default function BookingDetailsPage() {
           {/* Deliverables Tab */}
           <TabsContent value="deliverables">
             <div className="space-y-4">
-              {booking.deliverables.map((deliverable: any) => (
+              {/* Add Deliverable Button */}
+              <div className="flex justify-end mb-4">
+                <Button
+                  onClick={() => toast.info('Add deliverable functionality would be implemented here')}
+                  size="sm"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Deliverable
+                </Button>
+              </div>
+              
+              {/* Show deliverables or empty state */}
+              {booking.deliverables.length === 0 ? (
+                <Card>
+                  <CardContent className="py-12">
+                    <div className="text-center">
+                      <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">
+                        No deliverables yet
+                      </h3>
+                      <p className="text-gray-500 mb-4">
+                        Add deliverables to track content creation progress
+                      </p>
+                      <Button
+                        onClick={() => toast.info('Add deliverable functionality would be implemented here')}
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add First Deliverable
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                booking.deliverables.map((deliverable: any) => (
                 <Card key={deliverable.id}>
                   <CardContent className="pt-6">
                     <div className="flex items-start justify-between">
@@ -657,7 +749,7 @@ export default function BookingDetailsPage() {
                         <div className="flex items-center gap-4 text-sm text-gray-500">
                           <span className="flex items-center gap-1">
                             <Calendar className="h-4 w-4" />
-                            Due: {deliverable.deadline.toLocaleDateString()}
+                            Due: {deliverable.deadline ? new Date(deliverable.deadline).toLocaleDateString() : 'Not set'}
                           </span>
                           <span className="flex items-center gap-1">
                             <RefreshCw className="h-4 w-4" />
@@ -704,11 +796,22 @@ export default function BookingDetailsPage() {
                             Start
                           </Button>
                         )}
+                        
+                        {/* Delete button for all deliverables */}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleDeliverableDelete(deliverable.id)}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
-              ))}
+                ))
+              )}
             </div>
           </TabsContent>
 

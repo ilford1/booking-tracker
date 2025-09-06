@@ -57,7 +57,6 @@ export type Booking = {
   contact_channel?: 'instagram' | 'tiktok' | 'email' | 'zalo' | 'phone' | 'other' | null
   utm_code?: string | null
   affiliate_code?: string | null
-  actor: string
   created_at: string
   updated_at: string
   // Relations

@@ -11,107 +11,148 @@ import type {
 } from '@/types/notification'
 
 export async function getNotifications(userId?: string): Promise<Notification[]> {
-  const supabase = await createAdminClient()
-  
-  let query = supabase
-    .from('notifications')
-    .select('*')
-    .order('created_at', { ascending: false })
+  try {
+    const supabase = await createAdminClient()
+    
+    let query = supabase
+      .from('notifications')
+      .select('*')
+      .order('created_at', { ascending: false })
 
-  // If userId is provided, filter by user, otherwise get all for current user
-  if (userId) {
-    query = query.eq('user_id', userId)
+    // If userId is provided, filter by user, otherwise get all for current user
+    if (userId) {
+      query = query.eq('user_id', userId)
+    }
+
+    const { data, error } = await query
+
+    if (error) {
+      console.error('Error fetching notifications:', error)
+      // If the table doesn't exist, return empty array instead of throwing
+      if (error.code === 'PGRST205' || error.message?.includes('notifications')) {
+        console.log('Notifications table not found or error, returning empty array')
+        return []
+      }
+      // For other errors, also return empty array to prevent app crashes
+      console.log('Returning empty array due to error')
+      return []
+    }
+
+    return data || []
+  } catch (err) {
+    console.error('Unexpected error in getNotifications:', err)
+    return []
   }
-
-  const { data, error } = await query
-
-  if (error) {
-    console.error('Error fetching notifications:', error)
-    throw new Error('Failed to fetch notifications')
-  }
-
-  return data || []
 }
 
 export async function getUnreadNotifications(userId: string): Promise<Notification[]> {
-  const supabase = await createAdminClient()
-  const { data, error } = await supabase
-    .from('notifications')
-    .select('*')
-    .eq('user_id', userId)
-    .eq('read', false)
-    .order('created_at', { ascending: false })
+  try {
+    const supabase = await createAdminClient()
+    const { data, error } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('read', false)
+      .order('created_at', { ascending: false })
 
-  if (error) {
-    console.error('Error fetching unread notifications:', error)
-    throw new Error('Failed to fetch unread notifications')
+    if (error) {
+      console.error('Error fetching unread notifications:', error)
+      // Return empty array for any error to prevent app crashes
+      return []
+    }
+
+    return data || []
+  } catch (err) {
+    console.error('Unexpected error in getUnreadNotifications:', err)
+    return []
   }
-
-  return data || []
 }
 
 export async function getNotificationCount(userId: string): Promise<{ total: number; unread: number }> {
-  const supabase = await createAdminClient()
-  
-  const [totalResult, unreadResult] = await Promise.all([
-    supabase
-      .from('notifications')
-      .select('id', { count: 'exact' })
-      .eq('user_id', userId),
-    supabase
-      .from('notifications')
-      .select('id', { count: 'exact' })
-      .eq('user_id', userId)
-      .eq('read', false)
-  ])
+  try {
+    const supabase = await createAdminClient()
+    
+    const [totalResult, unreadResult] = await Promise.all([
+      supabase
+        .from('notifications')
+        .select('id', { count: 'exact' })
+        .eq('user_id', userId),
+      supabase
+        .from('notifications')
+        .select('id', { count: 'exact' })
+        .eq('user_id', userId)
+        .eq('read', false)
+    ])
 
-  if (totalResult.error || unreadResult.error) {
-    console.error('Error getting notification counts:', totalResult.error || unreadResult.error)
-    throw new Error('Failed to get notification counts')
-  }
+    if (totalResult.error || unreadResult.error) {
+      const error = totalResult.error || unreadResult.error
+      console.error('Error getting notification counts:', error)
+      // Return zero counts for any error to prevent app crashes
+      return { total: 0, unread: 0 }
+    }
 
-  return {
-    total: totalResult.count || 0,
-    unread: unreadResult.count || 0
+    return {
+      total: totalResult.count || 0,
+      unread: unreadResult.count || 0
+    }
+  } catch (err) {
+    console.error('Unexpected error in getNotificationCount:', err)
+    return { total: 0, unread: 0 }
   }
 }
 
-export async function createNotification(notificationData: CreateNotificationData): Promise<Notification> {
-  const supabase = await createAdminClient()
-  const { data, error } = await supabase
-    .from('notifications')
-    .insert(notificationData)
-    .select()
-    .single()
+export async function createNotification(notificationData: CreateNotificationData): Promise<Notification | null> {
+  try {
+    const supabase = await createAdminClient()
+    const { data, error } = await supabase
+      .from('notifications')
+      .insert(notificationData)
+      .select()
+      .single()
 
-  if (error) {
-    console.error('Error creating notification:', error)
-    throw new Error('Failed to create notification')
+    if (error) {
+      console.error('Error creating notification:', error)
+      // If table doesn't exist, return null instead of throwing
+      if (error.code === 'PGRST205' || error.message?.includes('notifications')) {
+        console.log('Notifications table not found, skipping notification creation')
+        return null
+      }
+      // For other errors, also return null to prevent crashes
+      return null
+    }
+
+    revalidatePath('/notifications')
+    return data
+  } catch (err) {
+    console.error('Unexpected error in createNotification:', err)
+    return null
   }
-
-  revalidatePath('/notifications')
-  return data
 }
 
-export async function markNotificationAsRead(notificationId: string): Promise<Notification> {
-  const supabase = await createAdminClient()
-  const { data, error } = await supabase
-    .from('notifications')
-    .update({ 
-      read: true, 
-      read_at: new Date().toISOString() 
-    })
-    .eq('id', notificationId)
-    .select()
-    .single()
+export async function markNotificationAsRead(notificationId: string): Promise<Notification | null> {
+  try {
+    const supabase = await createAdminClient()
+    const { data, error } = await supabase
+      .from('notifications')
+      .update({ 
+        read: true, 
+        read_at: new Date().toISOString() 
+      })
+      .eq('id', notificationId)
+      .select()
+      .single()
 
-  if (error) {
-    console.error('Error marking notification as read:', error)
-    throw new Error('Failed to mark notification as read')
+    if (error) {
+      console.error('Error marking notification as read:', error)
+      return null
+    }
+
+    revalidatePath('/notifications')
+    return data
+  } catch (err) {
+    console.error('Unexpected error in markNotificationAsRead:', err)
+    return null
   }
-
-  revalidatePath('/notifications')
-  return data
 }
 
 export async function markAllNotificationsAsRead(userId: string): Promise<void> {
@@ -127,6 +168,11 @@ export async function markAllNotificationsAsRead(userId: string): Promise<void> 
 
   if (error) {
     console.error('Error marking all notifications as read:', error)
+    // If the table doesn't exist, just log and return instead of throwing
+    if (error.code === 'PGRST205') {
+      console.log('Notifications table not found, skipping mark as read')
+      return
+    }
     throw new Error('Failed to mark all notifications as read')
   }
 
@@ -134,52 +180,67 @@ export async function markAllNotificationsAsRead(userId: string): Promise<void> 
 }
 
 export async function deleteNotification(notificationId: string): Promise<void> {
-  const supabase = await createAdminClient()
-  const { error } = await supabase
-    .from('notifications')
-    .delete()
-    .eq('id', notificationId)
+  try {
+    const supabase = await createAdminClient()
+    const { error } = await supabase
+      .from('notifications')
+      .delete()
+      .eq('id', notificationId)
 
-  if (error) {
-    console.error('Error deleting notification:', error)
-    throw new Error('Failed to delete notification')
+    if (error) {
+      console.error('Error deleting notification:', error)
+      // Don't throw, just log the error
+      return
+    }
+
+    revalidatePath('/notifications')
+  } catch (err) {
+    console.error('Unexpected error in deleteNotification:', err)
   }
-
-  revalidatePath('/notifications')
 }
 
 export async function deleteAllReadNotifications(userId: string): Promise<void> {
-  const supabase = await createAdminClient()
-  const { error } = await supabase
-    .from('notifications')
-    .delete()
-    .eq('user_id', userId)
-    .eq('read', true)
+  try {
+    const supabase = await createAdminClient()
+    const { error } = await supabase
+      .from('notifications')
+      .delete()
+      .eq('user_id', userId)
+      .eq('read', true)
 
-  if (error) {
-    console.error('Error deleting read notifications:', error)
-    throw new Error('Failed to delete read notifications')
+    if (error) {
+      console.error('Error deleting read notifications:', error)
+      // Don't throw, just log the error
+      return
+    }
+
+    revalidatePath('/notifications')
+  } catch (err) {
+    console.error('Unexpected error in deleteAllReadNotifications:', err)
   }
-
-  revalidatePath('/notifications')
 }
 
 // Utility functions for generating notifications from events
 export async function generateNotificationFromEvent(event: NotificationEvent): Promise<void> {
-  const template = getNotificationTemplate(event)
-  if (!template) return
+  try {
+    const template = getNotificationTemplate(event)
+    if (!template) return
 
-  await createNotification({
-    user_id: event.user_id,
-    title: template.title,
-    message: template.message,
-    type: template.type,
-    priority: template.priority,
-    related_id: event.related_id || null,
-    related_type: event.related_type || null,
-    action_url: template.action_url || null,
-    expires_at: template.expires_at?.toISOString() || null
-  })
+    await createNotification({
+      user_id: event.user_id,
+      title: template.title,
+      message: template.message,
+      type: template.type,
+      priority: template.priority,
+      related_id: event.related_id || null,
+      related_type: event.related_type || null,
+      action_url: template.action_url || null,
+      expires_at: template.expires_at?.toISOString() || null
+    })
+  } catch (err) {
+    console.error('Error generating notification from event:', err)
+    // Don't throw - just log and continue
+  }
 }
 
 // Helper function to get notification templates based on event type

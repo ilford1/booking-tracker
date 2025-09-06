@@ -38,6 +38,8 @@ const bookingFormSchema = z.object({
   contact_channel: z.enum(CONTACT_CHANNELS).optional(),
   utm_code: z.string().optional().or(z.literal('')),
   affiliate_code: z.string().optional().or(z.literal('')),
+  scheduled_date: z.string().optional().or(z.literal('')), // Date when deliverables are due
+  content_type: z.string().optional().or(z.literal('')), // Type of content to be delivered
 })
 
 type BookingFormValues = z.infer<typeof bookingFormSchema>
@@ -76,6 +78,8 @@ export function BookingForm({
       contact_channel: undefined,
       utm_code: '',
       affiliate_code: '',
+      scheduled_date: '',
+      content_type: '',
       ...initialData,
     },
   })
@@ -104,10 +108,14 @@ export function BookingForm({
     try {
       setIsSubmitting(true)
       
+      // Ensure status is valid
+      const validStatuses = ['pending', 'in_process', 'content_submitted', 'approved', 'completed', 'canceled'] as const
+      const status = validStatuses.includes(data.status as any) ? data.status : 'pending'
+      
       const bookingData = {
         campaign_id: data.campaign_id && data.campaign_id !== '' && data.campaign_id !== 'none' ? data.campaign_id : null,
         creator_id: data.creator_id && data.creator_id !== '' && data.creator_id !== 'none' ? data.creator_id : null,
-        status: data.status,
+        status: status,
         offer_amount: data.offer_amount || null,
         agreed_amount: data.agreed_amount || null,
         currency: data.currency,
@@ -116,6 +124,8 @@ export function BookingForm({
         contact_channel: data.contact_channel || null,
         utm_code: data.utm_code && data.utm_code !== '' ? data.utm_code : null,
         affiliate_code: data.affiliate_code && data.affiliate_code !== '' ? data.affiliate_code : null,
+        scheduled_date: data.scheduled_date && data.scheduled_date !== '' ? data.scheduled_date : null,
+        content_type: data.content_type && data.content_type !== '' ? data.content_type : null,
       }
 
       if (initialData?.id) {
@@ -371,9 +381,62 @@ export function BookingForm({
 
         <Card>
           <CardHeader>
-            <CardTitle>Brief & Tracking</CardTitle>
+            <CardTitle>Deliverables & Schedule</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="scheduled_date"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Deliverable Due Date</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="date"
+                        {...field}
+                        value={field.value || ''}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      When the content should be delivered
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="content_type"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Content Type</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select content type" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="post">Post</SelectItem>
+                        <SelectItem value="story">Story</SelectItem>
+                        <SelectItem value="reel">Reel</SelectItem>
+                        <SelectItem value="video">Video</SelectItem>
+                        <SelectItem value="live">Live Stream</SelectItem>
+                        <SelectItem value="review">Review</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormDescription>
+                      Type of content to be delivered
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
             <FormField
               control={form.control}
               name="brief"

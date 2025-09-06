@@ -45,12 +45,10 @@ export async function getBooking(id: string): Promise<Booking | null> {
 
 export async function createBooking(bookingData: CreateBookingData) {
   const supabase = await createAdminClient()
+  
   const { data, error } = await supabase
     .from('bookings')
-    .insert({
-      ...bookingData
-      // Removed actor field - not needed if it has a default value
-    })
+    .insert(bookingData)
     .select(`
       *,
       campaign:campaigns(*),
@@ -60,7 +58,6 @@ export async function createBooking(bookingData: CreateBookingData) {
 
   if (error) {
     console.error('Error creating booking:', error)
-    console.error('Booking data being inserted:', { ...bookingData, actor: 'system' })
     throw new Error(`Failed to create booking: ${error.message || error.code || 'Unknown error'}`)
   }
 
@@ -72,10 +69,7 @@ export async function updateBooking(id: string, bookingData: UpdateBookingData) 
   const supabase = await createAdminClient()
   const { data, error } = await supabase
     .from('bookings')
-    .update({
-      ...bookingData
-      // Removed actor field
-    })
+    .update(bookingData)
     .eq('id', id)
     .select(`
       *,
@@ -110,10 +104,7 @@ export async function updateBookingStatus(id: string, status: BookingStatus) {
 
   const { data, error } = await supabase
     .from('bookings')
-    .update({
-      status
-      // Removed actor field
-    })
+    .update({ status })
     .eq('id', id)
     .select(`
       *,

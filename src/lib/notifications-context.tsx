@@ -10,6 +10,7 @@ import {
   deleteNotification,
   getNotificationCount
 } from '@/lib/actions/notifications'
+import { useAuth } from '@/lib/auth-context'
 
 interface NotificationsContextType {
   notifications: Notification[]
@@ -40,18 +41,24 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [loading, setLoading] = useState(true)
   const [unreadCount, setUnreadCount] = useState(0)
+  const { user } = useAuth()
 
   // Load notifications from database on mount
   const loadNotifications = async () => {
     try {
       setLoading(true)
-      // For now, we'll use a hardcoded user ID until we have proper auth
-      // In a real app, you'd get this from auth context
-      const mockUserId = 'user-123'
+      
+      // If no user is authenticated, return empty notifications
+      if (!user?.id) {
+        console.log('No authenticated user, skipping notifications load')
+        setNotifications([])
+        setUnreadCount(0)
+        return
+      }
       
       const [notificationsData, countData] = await Promise.all([
-        getNotifications(mockUserId),
-        getNotificationCount(mockUserId)
+        getNotifications(user.id),
+        getNotificationCount(user.id)
       ])
       
       // Transform notifications to include relative time
@@ -65,7 +72,10 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
       
     } catch (error) {
       console.error('Failed to load notifications:', error)
-      toast.error('Failed to load notifications')
+      // Don't show error toast for expected scenarios
+      if (user?.id) {
+        toast.error('Failed to load notifications')
+      }
       // For demo purposes, we'll still show empty state rather than crash
       setNotifications([])
       setUnreadCount(0)
@@ -76,7 +86,7 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
 
   useEffect(() => {
     loadNotifications()
-  }, [])
+  }, [user?.id])
 
   const markAsRead = async (id: string) => {
     try {
@@ -98,8 +108,12 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
 
   const markAllAsRead = async () => {
     try {
-      const mockUserId = 'user-123' // Same as above
-      await markAllNotificationsAsRead(mockUserId)
+      if (!user?.id) {
+        console.log('No authenticated user, cannot mark notifications as read')
+        return
+      }
+      
+      await markAllNotificationsAsRead(user.id)
       
       // Update local state
       setNotifications(prev => 

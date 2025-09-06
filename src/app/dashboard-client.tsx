@@ -82,37 +82,93 @@ export default function ClientDashboard() {
         .gte('created_at', startOfWeek.toISOString())
         .eq('status', 'confirmed')
 
-      // Mock data for now (since we can't fetch payments/budgets reliably)
+      // Fetch budget data from campaigns
+      const { data: allCampaigns } = await supabase
+        .from('campaigns')
+        .select('budget, status')
+      
+      let totalBudget = 0
+      let budgetUsed = 0
+      
+      if (allCampaigns) {
+        totalBudget = allCampaigns.reduce((sum, campaign) => sum + (campaign.budget || 0), 0)
+        // Estimate budget used based on active/completed campaigns
+        budgetUsed = allCampaigns
+          .filter(c => c.status === 'active' || c.status === 'completed')
+          .reduce((sum, campaign) => sum + ((campaign.budget || 0) * 0.7), 0) // Assume 70% budget utilization
+      }
+      
+      // Fetch pending and overdue bookings
+      const { count: pendingCount } = await supabase
+        .from('bookings')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'pending')
+      
+      const overdueDate = new Date()
+      overdueDate.setDate(overdueDate.getDate() - 7) // Consider overdue if older than 7 days
+      
+      const { count: overdueCount } = await supabase
+        .from('bookings')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'confirmed')
+        .lte('created_at', overdueDate.toISOString())
+      
       setKpis({
         activeCampaigns: campaignsCount || 0,
         bookedPostsThisWeek: postsCount || 0,
-        budgetUsed: 25000000, // Mock data
-        totalBudget: 100000000, // Mock data
-        pendingDeliverables: 3, // Mock data
-        overdueTasks: 1 // Mock data
+        budgetUsed: Math.round(budgetUsed),
+        totalBudget: totalBudget,
+        pendingDeliverables: pendingCount || 0,
+        overdueTasks: overdueCount || 0
       })
 
-      // Set mock recent activity
-      setRecentActivity([
-        {
-          id: '1',
-          type: 'post',
-          description: '@fashionista_vn posted content for Low-Rise Logic Drop',
-          timestamp: '2h ago'
-        },
-        {
-          id: '2',
-          type: 'payment',
-          description: 'Payment of ₫3,000,000 sent to @beauty_influencer',
-          timestamp: '4h ago'
-        },
-        {
-          id: '3',
-          type: 'review',
-          description: 'Content submitted for review: Polka-Dot Swim Campaign',
-          timestamp: '6h ago'
-        }
-      ])
+      // Fetch recent bookings for activity
+      const { data: recentBookings } = await supabase
+        .from('bookings')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(5)
+      
+      const activities: RecentActivity[] = []
+      
+      if (recentBookings) {
+        recentBookings.forEach(booking => {
+          const createdAt = new Date(booking.created_at)
+          const now = new Date()
+          const hoursAgo = Math.floor((now.getTime() - createdAt.getTime()) / (1000 * 60 * 60))
+          const daysAgo = Math.floor(hoursAgo / 24)
+          
+          let timestamp = 'just now'
+          if (daysAgo > 0) {
+            timestamp = `${daysAgo}d ago`
+          } else if (hoursAgo > 0) {
+            timestamp = `${hoursAgo}h ago`
+          }
+          
+          let type = 'post'
+          let description = `${booking.creator_username || 'Creator'} `
+          
+          if (booking.status === 'pending') {
+            type = 'review'
+            description += `submitted content for review: ${booking.campaign_name || 'Campaign'}`
+          } else if (booking.status === 'confirmed') {
+            type = 'post'
+            description += `posted content for ${booking.campaign_name || 'Campaign'}`
+          } else if (booking.status === 'delivered') {
+            type = 'payment'
+            description = `Payment of ${formatCurrency(booking.amount)} processed for ${booking.creator_username || 'Creator'}`
+          }
+          
+          activities.push({
+            id: booking.id,
+            type,
+            description,
+            timestamp
+          })
+        })
+      }
+      
+      setRecentActivity(activities)
 
     } catch (error) {
       console.error('Error fetching dashboard data:', error)

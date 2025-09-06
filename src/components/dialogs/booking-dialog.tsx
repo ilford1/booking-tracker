@@ -80,6 +80,8 @@ export function BookingDialog({
               contact_channel: booking.contact_channel || undefined,
               utm_code: booking.utm_code || '',
               affiliate_code: booking.affiliate_code || '',
+              scheduled_date: booking.scheduled_date || '',
+              content_type: booking.content_type || '',
             } : undefined}
             prefilledCampaignId={prefilledCampaignId}
             prefilledCreatorId={prefilledCreatorId}

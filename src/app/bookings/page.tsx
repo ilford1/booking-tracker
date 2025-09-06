@@ -9,10 +9,12 @@ import { Badge } from '@/components/ui/badge'
 import { getBookings } from '@/lib/actions/bookings'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { BOOKING_STATUSES, STATUS_COLORS, type Booking } from '@/types'
+import { isBookingOverdue, getDaysUntilDeadline, getDisplayStatus } from '@/lib/utils/booking-status'
 import { BookingDialog } from '@/components/dialogs/booking-dialog'
 import { StatusSelect } from '@/components/status-select'
 import { BookingActionsMenu } from '@/components/booking-context-menu'
 import { SearchInput } from '@/components/search-input'
+import { CampaignFilter } from '@/components/campaign-filter'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -43,7 +45,9 @@ import {
   Eye,
   ArrowRight,
   Edit,
-  ExternalLink
+  ExternalLink,
+  Clock,
+  AlertTriangle
 } from 'lucide-react'
 
 export default function BookingsPage() {
@@ -54,6 +58,7 @@ export default function BookingsPage() {
   const [refreshKey, setRefreshKey] = useState(0)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string[]>([])
+  const [campaignFilter, setCampaignFilter] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<'kanban' | 'table'>('kanban')
 
   useEffect(() => {
@@ -77,7 +82,7 @@ export default function BookingsPage() {
     setRefreshKey(prev => prev + 1)
   }
 
-  // Filter bookings based on search and status
+  // Filter bookings based on search, status, and campaign
   useEffect(() => {
     let filtered = bookings
 
@@ -98,8 +103,13 @@ export default function BookingsPage() {
       filtered = filtered.filter(booking => statusFilter.includes(booking.status))
     }
 
+    // Apply campaign filter
+    if (campaignFilter) {
+      filtered = filtered.filter(booking => booking.campaign_id === campaignFilter)
+    }
+
     setFilteredBookings(filtered)
-  }, [bookings, searchQuery, statusFilter])
+  }, [bookings, searchQuery, statusFilter, campaignFilter])
 
   const handleExport = () => {
     const csvData = filteredBookings.map(booking => ({
@@ -127,7 +137,12 @@ export default function BookingsPage() {
     toast.success('Bookings exported successfully!')
   }
 
-  const getStatusBadgeColor = (status: string) => {
+  const getStatusBadgeColor = (booking: Booking) => {
+    // Check if overdue first
+    if (isBookingOverdue(booking)) {
+      return 'bg-red-100 text-red-800 border-red-300'
+    }
+    
     const colors = {
       pending: 'bg-yellow-100 text-yellow-800',
       in_process: 'bg-blue-100 text-blue-800',
@@ -136,7 +151,7 @@ export default function BookingsPage() {
       completed: 'bg-emerald-100 text-emerald-800',
       canceled: 'bg-red-100 text-red-800'
     }
-    return colors[status as keyof typeof colors] || 'bg-gray-100 text-gray-800'
+    return colors[booking.status as keyof typeof colors] || 'bg-gray-100 text-gray-800'
   }
 
   if (loading) {
@@ -182,6 +197,12 @@ export default function BookingsPage() {
                 onChange={setSearchQuery}
                 placeholder="Search bookings..."
                 className="w-64"
+              />
+              
+              <CampaignFilter
+                value={campaignFilter}
+                onChange={setCampaignFilter}
+                placeholder="All Campaigns"
               />
               
               <DropdownMenu>
@@ -364,17 +385,39 @@ export default function BookingsPage() {
                                 {booking.campaign?.name || 'No Campaign'}
                               </p>
                             </div>
-                            <Badge className={`text-xs ${getStatusBadgeColor(booking.status)}`}>
-                              {booking.status.replace('_', ' ')}
-                            </Badge>
+                            <div className="flex flex-col items-end gap-1">
+                              <Badge className={`text-xs ${getStatusBadgeColor(booking)}`}>
+                                {getDisplayStatus(booking).replace('_', ' ')}
+                              </Badge>
+                              {isBookingOverdue(booking) && (
+                                <AlertTriangle className="h-3 w-3 text-red-500" />
+                              )}
+                            </div>
                           </div>
                           
-                          <div className="text-xs text-gray-600 mb-2">
-                            {formatCurrency(booking.agreed_amount || booking.offer_amount || 0)}
-                          </div>
-                          
-                          <div className="text-xs text-gray-400 mb-3">
-                            Created {formatDate(new Date(booking.created_at))}
+                          <div className="space-y-1 mb-3">
+                            <div className="text-xs text-gray-600">
+                              {formatCurrency(booking.agreed_amount || booking.offer_amount || 0)}
+                            </div>
+                            
+                            {booking.scheduled_date && (
+                              <div className="flex items-center gap-1 text-xs">
+                                <Clock className="h-3 w-3" />
+                                <span className={getDaysUntilDeadline(booking).isOverdue ? 'text-red-600 font-medium' : 'text-gray-500'}>
+                                  {getDaysUntilDeadline(booking).message}
+                                </span>
+                              </div>
+                            )}
+                            
+                            {booking.content_type && (
+                              <div className="text-xs text-gray-500">
+                                Content: {booking.content_type}
+                              </div>
+                            )}
+                            
+                            <div className="text-xs text-gray-400">
+                              Created {formatDate(new Date(booking.created_at))}
+                            </div>
                           </div>
                           
                           <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
@@ -418,19 +461,6 @@ export default function BookingsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-lg font-semibold">Bookings Table</h3>
-                  <p className="text-sm text-gray-500 mt-1">
-                    Click rows to view details • Right-click for quick actions • Use Tab and Enter for keyboard navigation
-                  </p>
-                </div>
-                <div className="text-xs text-gray-400 space-y-1">
-                  <div className="flex items-center gap-2">
-                    <kbd className="px-2 py-1 bg-gray-100 rounded text-xs">Enter</kbd>
-                    <span>Open details</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <kbd className="px-2 py-1 bg-gray-100 rounded text-xs">Right Click</kbd>
-                    <span>Quick actions</span>
-                  </div>
                 </div>
               </div>
             </CardHeader>
