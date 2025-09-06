@@ -521,7 +521,7 @@ export default function BookingsPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge className={getStatusBadgeColor(booking.status)}>
+                        <Badge className={getStatusBadgeColor(booking)}>
                           {booking.status.replace('_', ' ')}
                         </Badge>
                       </TableCell>
