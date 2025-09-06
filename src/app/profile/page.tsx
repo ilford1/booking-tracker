@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { AppShell } from '@/components/app-shell'
 import { ProtectedRoute } from '@/components/auth/protected-route'
 import { useAuth } from '@/lib/auth-context'
@@ -20,12 +20,15 @@ import {
   Calendar,
   Save,
   Upload,
-  Shield
+  Shield,
+  Loader2
 } from 'lucide-react'
 
 function ProfileContent() {
   const { user, updateProfile } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [profileData, setProfileData] = useState({
     first_name: '',
     last_name: '',
@@ -62,6 +65,47 @@ function ProfileContent() {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file')
+      return
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image size should be less than 5MB')
+      return
+    }
+
+    setIsUploadingAvatar(true)
+    try {
+      // Create a temporary URL for preview
+      const tempUrl = URL.createObjectURL(file)
+      
+      // Update the profile data with the new avatar
+      setProfileData(prev => ({ ...prev, avatar_url: tempUrl }))
+      
+      // In a real implementation, you would upload to your storage service here
+      // For now, we'll simulate an upload delay
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      
+      toast.success('Avatar uploaded successfully! Click "Save Changes" to apply.')
+    } catch (error) {
+      console.error('Failed to upload avatar:', error)
+      toast.error('Failed to upload avatar')
+    } finally {
+      setIsUploadingAvatar(false)
+    }
+  }
+
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click()
   }
 
   const getRoleDisplay = (role: string) => {
@@ -113,9 +157,31 @@ function ProfileContent() {
                       {(profileData.first_name?.[0] || '') + (profileData.last_name?.[0] || '')}
                     </AvatarFallback>
                   </Avatar>
-                  <Button variant="outline" size="sm" className="gap-2">
-                    <Upload className="h-4 w-4" />
-                    Change Photo
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAvatarUpload}
+                    className="hidden"
+                  />
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="gap-2" 
+                    onClick={handleAvatarClick}
+                    disabled={isUploadingAvatar}
+                  >
+                    {isUploadingAvatar ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Uploading...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="h-4 w-4" />
+                        Change Photo
+                      </>
+                    )}
                   </Button>
                 </div>
                 

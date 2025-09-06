@@ -17,9 +17,20 @@ import {
   Search,
   Bell,
   User,
-  Shield
+  Shield,
+  Check,
+  X
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { Badge } from '@/components/ui/badge'
 import { CommandPalette } from '@/components/command-palette'
 import { GlobalSearch } from '@/components/global-search'
 import { useGlobalSearch } from '@/hooks/use-global-search'
@@ -154,9 +165,75 @@ export function AppShell({ children }: AppShellProps) {
 
             {/* Actions */}
             <div className="ml-4 flex items-center md:ml-6 space-x-2">
-              <Button variant="ghost" size="icon">
-                <Bell className="h-5 w-5" />
-              </Button>
+              {/* Notifications */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="relative">
+                    <Bell className="h-5 w-5" />
+                    {/* Notification badge */}
+                    <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                      2
+                    </span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-80" align="end">
+                  <DropdownMenuLabel className="flex items-center justify-between">
+                    <span>Notifications</span>
+                    <Badge variant="secondary" className="text-xs">
+                      2 new
+                    </Badge>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  
+                  {/* Sample notifications */}
+                  <DropdownMenuItem className="flex items-start space-x-3 p-3 cursor-pointer">
+                    <div className="flex-shrink-0">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">
+                        New booking request
+                      </p>
+                      <p className="text-sm text-gray-500 truncate">
+                        @fashionista_jane wants to collaborate
+                      </p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        2 minutes ago
+                      </p>
+                    </div>
+                    <Button variant="ghost" size="sm" className="flex-shrink-0">
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </DropdownMenuItem>
+                  
+                  <DropdownMenuItem className="flex items-start space-x-3 p-3 cursor-pointer">
+                    <div className="flex-shrink-0">
+                      <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">
+                        Payment received
+                      </p>
+                      <p className="text-sm text-gray-500 truncate">
+                        ₫2,500,000 for Summer Campaign
+                      </p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        1 hour ago
+                      </p>
+                    </div>
+                    <Button variant="ghost" size="sm" className="flex-shrink-0">
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </DropdownMenuItem>
+                  
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem className="text-center p-2">
+                    <Button variant="ghost" className="w-full text-sm">
+                      View all notifications
+                    </Button>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
 
               {/* User menu */}
               <div className="ml-3 relative">
