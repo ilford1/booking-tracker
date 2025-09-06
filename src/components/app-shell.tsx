@@ -87,11 +87,11 @@ export function AppShell({ children }: AppShellProps) {
           <div className="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
             {/* Logo */}
             <div className="flex items-center flex-shrink-0 px-4 mb-8">
-              <div className="w-8 h-8 bg-black rounded-sm flex items-center justify-center">
-                <span className="text-white font-bold text-sm">K</span>
+              <div className="w-10 h-8 bg-black rounded-sm flex items-center justify-center">
+                <span className="text-white font-bold text-xs">VA</span>
               </div>
               <span className="ml-2 text-xl font-semibold text-gray-900">
-                KOL Tracker
+                VA collective
               </span>
             </div>
 

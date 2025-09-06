@@ -8,8 +8,8 @@ import { NotificationsProvider } from '@/lib/notifications-context'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'KOL Booking Tracker',
-  description: 'Comprehensive KOL/KOC booking and campaign management system',
+  title: 'VA collective',
+  description: 'Comprehensive creator booking and campaign management system',
 }
 
 export default function RootLayout({
