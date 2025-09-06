@@ -123,7 +123,7 @@ export function ScheduleWidget({ className, campaignFilter }: ScheduleWidgetProp
         }
         
         const { data: campaigns, error: campaignsError } = await campaignsQuery
-          .order('start_date', { ascending: true, nullsLast: true })
+          .order('start_date', { ascending: true })
           .limit(10)
         
         if (campaignsError) {
