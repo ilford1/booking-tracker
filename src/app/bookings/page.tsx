@@ -188,7 +188,7 @@ export default function BookingsPage() {
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Bookings</h1>
               <p className="text-gray-500 mt-1">
-                Creator booking & workflow tracking
+                Creator booking & tracking
               </p>
             </div>
             <div className="flex gap-2">
