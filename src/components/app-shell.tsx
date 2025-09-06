@@ -220,7 +220,7 @@ export function AppShell({ children }: AppShellProps) {
                             {notification.message}
                           </p>
                           <p className="text-xs text-gray-400 mt-1">
-                            {notification.time}
+                            {(notification as any).time || new Date(notification.created_at).toLocaleDateString()}
                           </p>
                         </div>
                         <Button 

@@ -96,6 +96,18 @@ export async function updateBooking(id: string, bookingData: UpdateBookingData) 
 
 export async function updateBookingStatus(id: string, status: BookingStatus) {
   const supabase = await createAdminClient()
+  
+  // First get the current booking to check for changes
+  const { data: currentBooking } = await supabase
+    .from('bookings')
+    .select(`
+      *,
+      campaign:campaigns(*),
+      creator:creators(*)
+    `)
+    .eq('id', id)
+    .single()
+
   const { data, error } = await supabase
     .from('bookings')
     .update({
@@ -113,6 +125,35 @@ export async function updateBookingStatus(id: string, status: BookingStatus) {
   if (error) {
     console.error('Error updating booking status:', error)
     throw new Error('Failed to update booking status')
+  }
+
+  // Generate notification if status actually changed
+  if (currentBooking && currentBooking.status !== status) {
+    try {
+      const { generateNotificationFromEvent } = await import('./notifications')
+      
+      // Generate notification for the creator (if they exist)
+      if (data.creator_id) {
+        await generateNotificationFromEvent({
+          event_type: 'booking_status_changed',
+          user_id: data.creator_id,
+          related_id: data.id,
+          related_type: 'booking',
+          data: {
+            old_status: currentBooking.status,
+            new_status: status,
+            campaign_name: data.campaign?.name
+          }
+        })
+      }
+      
+      // You could also generate notifications for other stakeholders here
+      // e.g., campaign managers, brand contacts, etc.
+      
+    } catch (notificationError) {
+      // Don't fail the main operation if notifications fail
+      console.error('Failed to generate notification for booking status change:', notificationError)
+    }
   }
 
   revalidatePath('/bookings')

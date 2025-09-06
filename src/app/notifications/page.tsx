@@ -33,11 +33,28 @@ const getNotificationIcon = (type: string) => {
 function NotificationsContent() {
   const { 
     notifications, 
+    loading,
     markAsRead, 
     markAllAsRead, 
     deleteNotification, 
+    refresh,
     unreadCount 
   } = useNotifications()
+
+  if (loading) {
+    return (
+      <AppShell>
+        <div className="px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto">
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+              <p className="mt-2 text-sm text-gray-600">Loading notifications...</p>
+            </div>
+          </div>
+        </div>
+      </AppShell>
+    )
+  }
 
   return (
     <AppShell>
@@ -60,9 +77,12 @@ function NotificationsContent() {
                   {unreadCount} unread
                 </Badge>
               )}
-              <Button variant="outline" onClick={markAllAsRead}>
+              <Button variant="outline" onClick={() => markAllAsRead()}>
                 <Check className="h-4 w-4 mr-2" />
                 Mark all as read
+              </Button>
+              <Button variant="ghost" onClick={refresh}>
+                Refresh
               </Button>
             </div>
           </div>
@@ -94,7 +114,7 @@ function NotificationsContent() {
                             </p>
                             <p className="text-gray-400 text-xs mt-2 flex items-center gap-1">
                               <Clock className="h-3 w-3" />
-                              {notification.time}
+                              {(notification as any).time || new Date(notification.created_at).toLocaleDateString()}
                             </p>
                           </div>
                           
