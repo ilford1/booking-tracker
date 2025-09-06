@@ -20,7 +20,6 @@ import {
   Key, 
   Database,
   Mail,
-  Palette,
   FileText,
   Download,
   Upload,
@@ -39,10 +38,6 @@ export default function SettingsPage() {
       paymentAlerts: true,
       weeklyReport: false,
       marketingEmails: false,
-    },
-    appearance: {
-      compactMode: false,
-      sidebarCollapsed: false,
     },
     privacy: {
       profileVisible: true,
@@ -297,29 +292,6 @@ export default function SettingsPage() {
                   id="weekly-report"
                   checked={settings.notifications.weeklyReport}
                   onCheckedChange={(checked) => updateSetting('notifications', 'weeklyReport', checked)}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Appearance Settings */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Palette className="h-5 w-5" />
-                Appearance
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="compact-mode">Compact Mode</Label>
-                  <p className="text-sm text-gray-500">Use more dense layout for tables and cards</p>
-                </div>
-                <Switch
-                  id="compact-mode"
-                  checked={settings.appearance.compactMode}
-                  onCheckedChange={(checked) => updateSetting('appearance', 'compactMode', checked)}
                 />
               </div>
             </CardContent>
