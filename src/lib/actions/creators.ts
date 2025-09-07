@@ -37,12 +37,22 @@ export async function getCreator(id: string): Promise<Creator | null> {
 
 export async function createCreator(creatorData: CreateCreatorData) {
   const supabase = await createAdminClient()
+  
+  // Get current user to set as actor if not already set
+  let actorId = (creatorData as any).actor
+  if (!actorId) {
+    const { data: { user } } = await supabase.auth.getUser()
+    actorId = user?.id || null
+  }
+  
+  const enrichedCreatorData = {
+    ...creatorData,
+    actor: actorId
+  }
+  
   const { data, error } = await supabase
     .from('creators')
-    .insert({
-      ...creatorData
-      // Removed actor field - not in schema cache
-    })
+    .insert(enrichedCreatorData)
     .select()
     .single()
 
