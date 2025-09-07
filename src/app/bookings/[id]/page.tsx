@@ -57,7 +57,6 @@ import {
   Video,
   Link,
   Star,
-  Copy,
   Printer,
   Share2,
   Archive,
@@ -323,16 +322,6 @@ export default function BookingDetailsPage() {
     toast.info('File upload functionality would be implemented here')
   }
 
-  // Handle duplicate booking
-  const handleDuplicate = async () => {
-    try {
-      toast.loading('Duplicating booking...')
-      // TODO: Implement booking duplication
-      toast.info('Duplicate functionality would be implemented here')
-    } catch (error) {
-      toast.error('Failed to duplicate booking')
-    }
-  }
 
   // Handle export booking details
   const handleExport = () => {
@@ -513,11 +502,6 @@ export default function BookingDetailsPage() {
                   <DropdownMenuItem onClick={() => toast.info('Edit functionality would be implemented here')}>
                     <Edit className="h-4 w-4 mr-2" />
                     Edit Booking
-                  </DropdownMenuItem>
-                  
-                  <DropdownMenuItem onClick={handleDuplicate}>
-                    <Copy className="h-4 w-4 mr-2" />
-                    Duplicate Booking
                   </DropdownMenuItem>
                   
                   <DropdownMenuItem onClick={handleExport}>

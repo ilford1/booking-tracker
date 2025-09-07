@@ -79,6 +79,15 @@ export default function BookingsPage() {
   }, [refreshKey])
 
   const handleBookingSuccess = () => {
+    console.log('Refreshing bookings data...')
+    setRefreshKey(prev => prev + 1)
+  }
+  
+  const handleBookingDelete = () => {
+    console.log('Booking deleted, forcing refresh...')
+    // Force a complete refresh for deletions
+    setBookings([])
+    setFilteredBookings([])
     setRefreshKey(prev => prev + 1)
   }
 
@@ -559,6 +568,7 @@ export default function BookingsPage() {
                           <BookingActionsMenu 
                             booking={booking}
                             onStatusUpdate={handleBookingSuccess}
+                            onDelete={handleBookingDelete}
                           />
                         </div>
                       </TableCell>

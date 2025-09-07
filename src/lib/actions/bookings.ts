@@ -154,6 +154,9 @@ export async function updateBookingStatus(id: string, status: BookingStatus) {
 
 export async function deleteBooking(id: string) {
   const supabase = await createAdminClient()
+  
+  console.log('Server action: Deleting booking with ID:', id)
+  
   const { error } = await supabase
     .from('bookings')
     .delete()
@@ -161,10 +164,16 @@ export async function deleteBooking(id: string) {
 
   if (error) {
     console.error('Error deleting booking:', error)
-    throw new Error('Failed to delete booking')
+    throw new Error(`Failed to delete booking: ${error.message}`)
   }
 
-  revalidatePath('/bookings')
+  console.log('Server action: Booking deleted successfully')
+  
+  // Invalidate multiple paths and force refresh
+  revalidatePath('/bookings', 'page')
+  revalidatePath('/', 'layout')
+  
+  return { success: true }
 }
 
 export async function getBookingsByStatus(status: BookingStatus): Promise<Booking[]> {

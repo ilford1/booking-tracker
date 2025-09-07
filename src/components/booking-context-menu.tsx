@@ -1,6 +1,6 @@
 'use client'
 
-import React from 'react'
+import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   DropdownMenu,
@@ -9,11 +9,19 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import {
-  Eye,
-  Edit,
   Copy,
   ExternalLink,
   CreditCard,
@@ -21,20 +29,23 @@ import {
   Archive,
   Trash2,
   Download,
-  FileText,
   MoreHorizontal
 } from 'lucide-react'
 import type { Booking } from '@/types/database'
 import { BookingStatus } from '@/types/booking-workflow'
+import { deleteBooking } from '@/lib/actions/bookings'
 
 interface BookingContextMenuProps {
   booking: Booking
   children: React.ReactNode
   onStatusUpdate?: () => void
+  onDelete?: () => void
 }
 
-export function BookingActionsMenu({ booking, onStatusUpdate }: Omit<BookingContextMenuProps, 'children'>) {
+export function BookingActionsMenu({ booking, onStatusUpdate, onDelete }: Omit<BookingContextMenuProps, 'children'>) {
   const router = useRouter()
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 
   const copyBookingId = () => {
     navigator.clipboard.writeText(booking.id)
@@ -88,7 +99,7 @@ export function BookingActionsMenu({ booking, onStatusUpdate }: Omit<BookingCont
         actions.push('Mark Submitted', 'Request Update')
         break
       case 'content_submitted':
-        actions.push('Review Content', 'Request Revision')
+        // Removed Review Content and Request Revision - handled separately
         break
       case 'approved':
         actions.push('Mark Completed', 'Create Payment')
@@ -106,6 +117,33 @@ export function BookingActionsMenu({ booking, onStatusUpdate }: Omit<BookingCont
     onStatusUpdate?.()
   }
 
+  const handleDelete = async () => {
+    setIsDeleting(true)
+    try {
+      console.log('Deleting booking:', booking.id)
+      await deleteBooking(booking.id)
+      console.log('Booking deleted successfully')
+      
+      toast.success('Booking deleted successfully')
+      setShowDeleteDialog(false)
+      
+      // Force refresh after a small delay to ensure the deletion completes
+      setTimeout(() => {
+        if (onDelete) {
+          onDelete()
+        } else {
+          onStatusUpdate?.()
+        }
+      }, 100)
+      
+    } catch (error) {
+      console.error('Error deleting booking:', error)
+      toast.error(`Failed to delete booking: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
   const quickActions = getQuickActions()
 
   return (
@@ -118,16 +156,6 @@ export function BookingActionsMenu({ booking, onStatusUpdate }: Omit<BookingCont
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56" align="end">
         {/* Primary Actions */}
-        <DropdownMenuItem onClick={() => router.push(`/bookings/${booking.id}`)}>
-          <Eye className="mr-2 h-4 w-4" />
-          View Details
-        </DropdownMenuItem>
-        
-        <DropdownMenuItem onClick={() => toast.info('Edit booking feature would be implemented here')}>
-          <Edit className="mr-2 h-4 w-4" />
-          Edit Booking
-        </DropdownMenuItem>
-
         <DropdownMenuSeparator />
 
         {/* Navigation */}
@@ -205,13 +233,38 @@ export function BookingActionsMenu({ booking, onStatusUpdate }: Omit<BookingCont
         )}
 
         <DropdownMenuItem 
-          onClick={() => toast.error('Delete booking feature would be implemented here')}
+          onClick={() => setShowDeleteDialog(true)}
           className="text-red-600"
         >
           <Trash2 className="mr-2 h-4 w-4" />
           Delete Booking
         </DropdownMenuItem>
       </DropdownMenuContent>
+      
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Booking</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this booking? This action cannot be undone.
+              <br /><br />
+              <strong>Creator:</strong> {booking.creator?.name || 'Unknown'}
+              <br />
+              <strong>Campaign:</strong> {booking.campaign?.name || 'Unknown'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {isDeleting ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DropdownMenu>
   )
 }
