@@ -142,8 +142,15 @@ export async function createBooking(bookingData: CreateBookingData) {
     .single()
 
   if (error) {
-    console.error('Error creating booking:', error)
-    throw new Error(`Failed to create booking: ${error.message || error.code || 'Unknown error'}`)
+    console.error('Error creating booking:', {
+      error,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      code: error.code,
+      bookingData: enrichedBookingData
+    })
+    throw new Error(`Failed to create booking: ${error.message || error.details || error.code || 'Unknown error'}`)
   }
 
   revalidatePath('/bookings')

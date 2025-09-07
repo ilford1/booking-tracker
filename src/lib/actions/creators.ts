@@ -42,7 +42,7 @@ export async function createCreator(creatorData: CreateCreatorData) {
   let actorId = (creatorData as any).actor
   if (!actorId) {
     const { data: { user } } = await supabase.auth.getUser()
-    actorId = user?.id || 'system' // Fallback to 'system' if no authenticated user
+    actorId = user?.id || null // Use null if no authenticated user
   }
   
   const enrichedCreatorData = {
