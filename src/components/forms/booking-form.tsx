@@ -18,28 +18,27 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { createBooking, updateBooking } from '@/lib/actions/bookings'
+import { createBooking, updateBooking, updateBookingOwnership } from '@/lib/actions/bookings'
 import { getCreators } from '@/lib/actions/creators'
 import { getCampaigns } from '@/lib/actions/campaigns'
+import { getUserProfiles, getCurrentUser, isUserAdmin } from '@/lib/actions/users'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
 import { BOOKING_STATUSES, CONTACT_CHANNELS } from '@/types'
 import type { Creator, Campaign } from '@/types'
+import type { UserProfile } from '@/types/database'
 
 const bookingFormSchema = z.object({
   campaign_id: z.string().optional().or(z.literal('none')),
   creator_id: z.string().optional().or(z.literal('none')),
   status: z.enum(BOOKING_STATUSES),
-  offer_amount: z.number().min(0).optional(),
-  agreed_amount: z.number().min(0).optional(),
   currency: z.string().min(1, 'Currency is required'),
   contract_url: z.string().optional().or(z.literal('')),
-  brief: z.string().optional().or(z.literal('')),
   contact_channel: z.enum(CONTACT_CHANNELS).optional(),
   utm_code: z.string().optional().or(z.literal('')),
   affiliate_code: z.string().optional().or(z.literal('')),
-  scheduled_date: z.string().optional().or(z.literal('')), // Date when deliverables are due
-  content_type: z.string().optional().or(z.literal('')), // Type of content to be delivered
+  deadline: z.string().optional().or(z.literal('')), // Estimated completion deadline
+  created_by: z.string().optional().or(z.literal('none')), // For admin ownership changes
 })
 
 type BookingFormValues = z.infer<typeof bookingFormSchema>
@@ -62,6 +61,9 @@ export function BookingForm({
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [creators, setCreators] = React.useState<Creator[]>([])
   const [campaigns, setCampaigns] = React.useState<Campaign[]>([])
+  const [users, setUsers] = React.useState<UserProfile[]>([])
+  const [currentUser, setCurrentUser] = React.useState<UserProfile | null>(null)
+  const [isAdmin, setIsAdmin] = React.useState(false)
   const [loading, setLoading] = React.useState(true)
 
   const form = useForm<BookingFormValues>({
@@ -70,16 +72,13 @@ export function BookingForm({
       campaign_id: prefilledCampaignId || 'none',
       creator_id: prefilledCreatorId || 'none',
       status: 'pending',
-      offer_amount: undefined,
-      agreed_amount: undefined,
       currency: 'VND',
       contract_url: '',
-      brief: '',
       contact_channel: undefined,
       utm_code: '',
       affiliate_code: '',
-      scheduled_date: '',
-      content_type: '',
+      deadline: '',
+      created_by: 'none',
       ...initialData,
     },
   })
@@ -87,16 +86,22 @@ export function BookingForm({
   React.useEffect(() => {
     const fetchData = async () => {
       try {
-        const [creatorsData, campaignsData] = await Promise.all([
+        const [creatorsData, campaignsData, usersData, currentUserData, adminStatus] = await Promise.all([
           getCreators(),
-          getCampaigns()
+          getCampaigns(),
+          getUserProfiles(),
+          getCurrentUser(),
+          isUserAdmin()
         ])
         setCreators(creatorsData)
         setCampaigns(campaignsData)
+        setUsers(usersData)
+        setCurrentUser(currentUserData)
+        setIsAdmin(adminStatus)
       } catch (error) {
         console.error('Error fetching data:', error)
         const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-        toast.error(`Failed to load creators and campaigns: ${errorMessage}`)
+        toast.error(`Failed to load data: ${errorMessage}`)
       } finally {
         setLoading(false)
       }
@@ -109,28 +114,42 @@ export function BookingForm({
       setIsSubmitting(true)
       
       // Ensure status is valid
-      const validStatuses = ['pending', 'in_process', 'content_submitted', 'approved', 'completed', 'canceled'] as const
+      const validStatuses = ['pending', 'deal', 'delivered', 'content_submitted', 'approved', 'completed'] as const
       const status = validStatuses.includes(data.status as any) ? data.status : 'pending'
+      
+      // Determine new owner ID for admin ownership changes
+      const newOwnerId = data.created_by && data.created_by !== '' && data.created_by !== 'none' ? data.created_by : null
+      
+      // Get selected creator for rate calculation
+      const selectedCreator = creators.find(c => c.id === data.creator_id)
+      const creatorRate = selectedCreator?.rate_card ? Object.values(selectedCreator.rate_card)[0] as number : null
       
       const bookingData = {
         campaign_id: data.campaign_id && data.campaign_id !== '' && data.campaign_id !== 'none' ? data.campaign_id : null,
         creator_id: data.creator_id && data.creator_id !== '' && data.creator_id !== 'none' ? data.creator_id : null,
         status: status,
-        offer_amount: data.offer_amount || null,
-        agreed_amount: data.agreed_amount || null,
+        offer_amount: creatorRate || null,
+        agreed_amount: creatorRate || null,
         currency: data.currency,
         contract_url: data.contract_url && data.contract_url !== '' ? data.contract_url : null,
-        brief: data.brief && data.brief !== '' ? data.brief : null,
         contact_channel: data.contact_channel || null,
         utm_code: data.utm_code && data.utm_code !== '' ? data.utm_code : null,
         affiliate_code: data.affiliate_code && data.affiliate_code !== '' ? data.affiliate_code : null,
-        scheduled_date: data.scheduled_date && data.scheduled_date !== '' ? data.scheduled_date : null,
-        content_type: data.content_type && data.content_type !== '' ? data.content_type : null,
+        deadline: data.deadline && data.deadline !== '' ? data.deadline : null,
+        // Set actor if admin is assigning to someone else
+        ...(isAdmin && newOwnerId ? { actor: newOwnerId } : {})
       }
 
       if (initialData?.id) {
         await updateBooking(initialData.id, bookingData)
-        toast.success('Booking updated successfully!')
+        
+        // Handle ownership change if admin and new owner selected
+        if (isAdmin && newOwnerId && newOwnerId !== (initialData as any)?.actor) {
+          await updateBookingOwnership(initialData.id, newOwnerId)
+          toast.success('Booking updated and ownership changed!')
+        } else {
+          toast.success('Booking updated successfully!')
+        }
       } else {
         await createBooking(bookingData)
         toast.success('Booking created successfully!')
@@ -303,58 +322,33 @@ export function BookingForm({
           </CardContent>
         </Card>
 
+
         <Card>
           <CardHeader>
-            <CardTitle>Pricing & Terms</CardTitle>
+            <CardTitle>Project Timeline</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="offer_amount"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Offer Amount</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        placeholder="5000000"
-                        {...field}
-                        value={field.value || ''}
-                        onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      Initial offer amount in the selected currency.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="agreed_amount"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Agreed Amount</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        placeholder="6000000"
-                        {...field}
-                        value={field.value || ''}
-                        onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      Final agreed amount after negotiations.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+            <FormField
+              control={form.control}
+              name="deadline"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Deadline (Optional)</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="date"
+                      {...field}
+                      value={field.value || ''}
+                      min={new Date().toISOString().split('T')[0]}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    When this booking should be completed. This will appear on your calendar.
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <FormField
               control={form.control}
@@ -371,88 +365,6 @@ export function BookingForm({
                   </FormControl>
                   <FormDescription>
                     Link to the signed contract or agreement.
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Deliverables & Schedule</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="scheduled_date"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Deliverable Due Date</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="date"
-                        {...field}
-                        value={field.value || ''}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      When the content should be delivered
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="content_type"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Content Type</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select content type" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="post">Post</SelectItem>
-                        <SelectItem value="story">Story</SelectItem>
-                        <SelectItem value="reel">Reel</SelectItem>
-                        <SelectItem value="video">Video</SelectItem>
-                        <SelectItem value="live">Live Stream</SelectItem>
-                        <SelectItem value="review">Review</SelectItem>
-                        <SelectItem value="other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormDescription>
-                      Type of content to be delivered
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <FormField
-              control={form.control}
-              name="brief"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Brief</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Campaign brief, requirements, deliverables, key messages..."
-                      className="resize-none h-32"
-                      {...field}
-                      value={field.value || ''}
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    Detailed brief for this specific booking.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -504,6 +416,51 @@ export function BookingForm({
             </div>
           </CardContent>
         </Card>
+
+        {/* Admin Only Section */}
+        {isAdmin && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Administration</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <FormField
+                control={form.control}
+                name="created_by"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Created By / Owner</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select staff member" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="none">Keep Current Owner</SelectItem>
+                        {users.map((user) => {
+                          const displayName = user.first_name && user.last_name 
+                            ? `${user.first_name} ${user.last_name}`
+                            : user.first_name || user.last_name || 'Unknown'
+                          
+                          return (
+                            <SelectItem key={user.id} value={user.id}>
+                              {displayName} ({user.user_role})
+                            </SelectItem>
+                          )
+                        })}
+                      </SelectContent>
+                    </Select>
+                    <FormDescription>
+                      Change who is responsible for this booking. Only admins can modify ownership.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+          </Card>
+        )}
 
         <div className="flex justify-end gap-3">
           {onCancel && (

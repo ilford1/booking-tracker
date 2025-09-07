@@ -26,7 +26,7 @@ import { Loader2, Plus, X } from 'lucide-react'
 const creatorFormSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   platforms: z.array(z.enum(['instagram', 'tiktok', 'facebook', 'other'])).min(1, 'Select at least one platform'),
-  email: z.string().email('Invalid email address').optional().or(z.literal('')),
+  address: z.string().optional(),
   handle: z.string().min(1, 'Handle is required'),
   phone: z.string().optional(),
   bank_account: z.object({
@@ -82,7 +82,7 @@ export function CreatorForm({ onSuccess, onCancel, initialData }: CreatorFormPro
     defaultValues: {
       name: '',
       platforms: ['instagram'],
-      email: '',
+      address: '',
       handle: '',
       phone: '',
       bank_account: {
@@ -116,7 +116,7 @@ export function CreatorForm({ onSuccess, onCancel, initialData }: CreatorFormPro
       // Transform form data to match database schema
       const creatorData = {
         name: data.name,
-        email: data.email || null,
+        address: data.address || null,
         platform: data.platforms?.[0] || 'instagram', // Store first platform for compatibility
         platforms: data.platforms || ['instagram'], // Store all platforms
         handle: data.handle,
@@ -304,7 +304,7 @@ export function CreatorForm({ onSuccess, onCancel, initialData }: CreatorFormPro
             <CardTitle>Contact</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* First row: Phone and Email */}
+            {/* First row: Phone and Address */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -322,12 +322,12 @@ export function CreatorForm({ onSuccess, onCancel, initialData }: CreatorFormPro
               
               <FormField
                 control={form.control}
-                name="email"
+                name="address"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
+                    <FormLabel>Address</FormLabel>
                     <FormControl>
-                      <Input type="email" placeholder="jane@example.com" {...field} value={field.value || ''} />
+                      <Input type="text" placeholder="123 Main St, City, State" {...field} value={field.value || ''} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

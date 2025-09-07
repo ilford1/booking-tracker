@@ -251,7 +251,7 @@ function getNotificationTemplate(event: NotificationEvent): NotificationTemplate
     case 'booking_created':
       return {
         title: 'New Booking Created',
-        message: `A new booking has been created${data?.campaign_name ? ` for ${data.campaign_name}` : ''}`,
+        message: `A new booking has been created${data?.campaign?.name ? ` for ${data.campaign.name}` : ''}`,
         type: 'booking',
         priority: 'medium',
         action_url: event.related_id ? `/bookings/${event.related_id}` : '/bookings'
@@ -260,7 +260,7 @@ function getNotificationTemplate(event: NotificationEvent): NotificationTemplate
     case 'booking_status_changed':
       return {
         title: 'Booking Status Updated',
-        message: `Booking status changed to ${data?.new_status?.replace('_', ' ') || 'updated'}${data?.campaign_name ? ` for ${data.campaign_name}` : ''}`,
+        message: `Booking status changed to ${data?.new_status?.replace('_', ' ') || 'updated'}${data?.campaign?.name ? ` for ${data.campaign.name}` : ''}`,
         type: 'booking',
         priority: 'medium',
         action_url: event.related_id ? `/bookings/${event.related_id}` : '/bookings'
@@ -269,7 +269,7 @@ function getNotificationTemplate(event: NotificationEvent): NotificationTemplate
     case 'payment_received':
       return {
         title: 'Payment Received',
-        message: `Payment of ${data?.amount || 'unknown amount'} has been received${data?.campaign_name ? ` for ${data.campaign_name}` : ''}`,
+        message: `Payment of ${data?.amount || 'unknown amount'} has been received${data?.campaign?.name ? ` for ${data.campaign.name}` : ''}`,
         type: 'payment',
         priority: 'high',
         action_url: event.related_id ? `/payments/${event.related_id}` : '/payments'
@@ -278,7 +278,7 @@ function getNotificationTemplate(event: NotificationEvent): NotificationTemplate
     case 'payment_failed':
       return {
         title: 'Payment Failed',
-        message: `Payment failed${data?.campaign_name ? ` for ${data.campaign_name}` : ''}. Please check payment details.`,
+        message: `Payment failed${data?.campaign?.name ? ` for ${data.campaign.name}` : ''}. Please check payment details.`,
         type: 'payment',
         priority: 'urgent',
         action_url: event.related_id ? `/payments/${event.related_id}` : '/payments'
@@ -287,7 +287,7 @@ function getNotificationTemplate(event: NotificationEvent): NotificationTemplate
     case 'campaign_completed':
       return {
         title: 'Campaign Completed',
-        message: `Campaign "${data?.campaign_name || 'Unknown'}" has been completed`,
+        message: `Campaign "${data?.campaign?.name || 'Unknown'}" has been completed`,
         type: 'campaign',
         priority: 'medium',
         action_url: event.related_id ? `/campaigns/${event.related_id}` : '/campaigns'
@@ -296,7 +296,7 @@ function getNotificationTemplate(event: NotificationEvent): NotificationTemplate
     case 'creator_joined':
       return {
         title: 'New Creator Joined',
-        message: `${data?.creator_name || 'A new creator'} has joined the platform`,
+        message: `${data?.creator?.name || 'A new creator'} has joined the platform`,
         type: 'creator',
         priority: 'low',
         action_url: event.related_id ? `/creators/${event.related_id}` : '/creators'

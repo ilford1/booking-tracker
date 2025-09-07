@@ -7,14 +7,18 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { getBookings } from '@/lib/actions/bookings'
+import { getUserProfiles, getCurrentUser } from '@/lib/actions/users'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { BOOKING_STATUSES, STATUS_COLORS, type Booking } from '@/types'
+import type { UserProfile } from '@/types/database'
 import { isBookingOverdue, getDaysUntilDeadline, getDisplayStatus } from '@/lib/utils/booking-status'
 import { BookingDialog } from '@/components/dialogs/booking-dialog'
 import { StatusSelect } from '@/components/status-select'
 import { BookingActionsMenu } from '@/components/booking-context-menu'
 import { SearchInput } from '@/components/search-input'
 import { CampaignFilter } from '@/components/campaign-filter'
+import { StaffFilter } from '@/components/staff-filter'
+import { UserAvatar } from '@/components/ui/user-avatar'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -54,22 +58,40 @@ export default function BookingsPage() {
   const router = useRouter()
   const [bookings, setBookings] = useState<Booking[]>([])
   const [filteredBookings, setFilteredBookings] = useState<Booking[]>([])
+  const [users, setUsers] = useState<UserProfile[]>([])
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshKey, setRefreshKey] = useState(0)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string[]>([])
   const [campaignFilter, setCampaignFilter] = useState<string | null>(null)
+  const [staffFilter, setStaffFilter] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<'kanban' | 'table'>('kanban')
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true)
+        // First get bookings
         const bookingsData = await getBookings()
         setBookings(bookingsData)
         setFilteredBookings(bookingsData)
+        
+        // Then try to get user data (may fail if schema isn't set up)
+        try {
+          const [usersData, currentUserData] = await Promise.all([
+            getUserProfiles(),
+            getCurrentUser()
+          ])
+          setUsers(usersData)
+          setCurrentUser(currentUserData)
+        } catch (userError) {
+          console.warn('User data not available yet:', userError)
+          setUsers([])
+          setCurrentUser(null)
+        }
       } catch (error) {
-        console.error('Error fetching bookings:', error)
+        console.error('Error fetching data:', error)
       } finally {
         setLoading(false)
       }
@@ -83,15 +105,34 @@ export default function BookingsPage() {
     setRefreshKey(prev => prev + 1)
   }
   
-  const handleBookingDelete = () => {
-    console.log('Booking deleted, forcing refresh...')
-    // Force a complete refresh for deletions
+  const handleBookingDelete = async () => {
+    console.log('🗑️ Booking deleted, forcing complete refresh...')
+    
+    // Clear current state immediately
     setBookings([])
     setFilteredBookings([])
+    setLoading(true)
+    
+    // Force refresh with new key
     setRefreshKey(prev => prev + 1)
+    
+    // Additional data refetch after a delay to ensure deletion is reflected
+    setTimeout(async () => {
+      try {
+        console.log('🔄 Re-fetching bookings after deletion...')
+        const bookingsData = await getBookings()
+        setBookings(bookingsData)
+        setFilteredBookings(bookingsData)
+        console.log('✅ Bookings refreshed after deletion')
+      } catch (error) {
+        console.error('❌ Error re-fetching bookings:', error)
+      } finally {
+        setLoading(false)
+      }
+    }, 250)
   }
 
-  // Filter bookings based on search, status, and campaign
+  // Filter bookings based on search, status, campaign, and staff
   useEffect(() => {
     let filtered = bookings
 
@@ -101,7 +142,6 @@ export default function BookingsPage() {
         booking.creator?.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         booking.creator?.handle?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         booking.campaign?.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        booking.brief?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         booking.utm_code?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         booking.affiliate_code?.toLowerCase().includes(searchQuery.toLowerCase())
       )
@@ -117,18 +157,24 @@ export default function BookingsPage() {
       filtered = filtered.filter(booking => booking.campaign_id === campaignFilter)
     }
 
+    // Apply staff filter
+    if (staffFilter) {
+      filtered = filtered.filter(booking => booking.actor === staffFilter)
+    }
+
     setFilteredBookings(filtered)
-  }, [bookings, searchQuery, statusFilter, campaignFilter])
+  }, [bookings, searchQuery, statusFilter, campaignFilter, staffFilter])
 
   const handleExport = () => {
     const csvData = filteredBookings.map(booking => ({
       Creator: booking.creator?.name || 'Unknown',
       Campaign: booking.campaign?.name || 'Unknown',
       Status: booking.status,
-      Rate: booking.agreed_amount || booking.offer_amount || 0,
-      Brief: booking.brief || '',
+      Rate: booking.agreed_amount || booking.offer_amount || (booking.creator?.rate_card ? Object.values(booking.creator.rate_card)[0] : 0) || 0,
+      Deadline: booking.deadline || '',
       'UTM Code': booking.utm_code || '',
-      'Contact Channel': booking.contact_channel || ''
+      'Contact Channel': booking.contact_channel || '',
+      'Created By': booking.created_by ? `${booking.created_by.first_name} ${booking.created_by.last_name}`.trim() : 'Unknown'
     }))
     
     const csvContent = [
@@ -154,11 +200,11 @@ export default function BookingsPage() {
     
     const colors = {
       pending: 'bg-yellow-100 text-yellow-800',
-      in_process: 'bg-blue-100 text-blue-800',
+      deal: 'bg-blue-100 text-blue-800',
+      delivered: 'bg-orange-100 text-orange-800',
       content_submitted: 'bg-purple-100 text-purple-800',
       approved: 'bg-green-100 text-green-800',
-      completed: 'bg-emerald-100 text-emerald-800',
-      canceled: 'bg-red-100 text-red-800'
+      completed: 'bg-emerald-100 text-emerald-800'
     }
     return colors[booking.status as keyof typeof colors] || 'bg-gray-100 text-gray-800'
   }
@@ -192,71 +238,87 @@ export default function BookingsPage() {
     <AppShell>
       <div className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         {/* Page Header */}
-        <div className="mb-8">
+        <div className="mb-8 space-y-4">
           <div className="flex items-center justify-between">
-            <div>
+            <div className="flex-shrink-0">
               <h1 className="text-3xl font-bold text-gray-900">Bookings</h1>
               <p className="text-gray-500 mt-1">
                 Creator booking & tracking
               </p>
             </div>
-            <div className="flex gap-2">
-              <SearchInput 
-                value={searchQuery}
-                onChange={setSearchQuery}
-                placeholder="Search bookings..."
-                className="w-64"
+            <div className="flex-shrink-0">
+              <BookingDialog onSuccess={handleBookingSuccess} />
+            </div>
+          </div>
+          
+          {/* Search and Filter Controls */}
+          <div className="flex flex-wrap items-center gap-3">
+            <SearchInput 
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="Search bookings..."
+              className="w-72"
+            />
+            
+            <CampaignFilter
+              value={campaignFilter}
+              onChange={setCampaignFilter}
+              placeholder="All Campaigns"
+            />
+            
+            {users.length > 0 && (
+              <StaffFilter
+                users={users}
+                currentUser={currentUser}
+                selectedUserId={staffFilter}
+                onUserSelect={setStaffFilter}
               />
-              
-              <CampaignFilter
-                value={campaignFilter}
-                onChange={setCampaignFilter}
-                placeholder="All Campaigns"
-              />
-              
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="gap-2">
-                    <Filter className="h-4 w-4" />
-                    Filter
-                    {statusFilter.length > 0 && (
-                      <Badge variant="secondary" className="ml-1">
-                        {statusFilter.length}
-                      </Badge>
-                    )}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56">
-                  <div className="px-2 py-1.5 text-sm font-semibold">Status</div>
-                  <DropdownMenuSeparator />
-                  {BOOKING_STATUSES.map((status) => (
-                    <DropdownMenuCheckboxItem
-                      key={status}
-                      checked={statusFilter.includes(status)}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          setStatusFilter([...statusFilter, status])
-                        } else {
-                          setStatusFilter(statusFilter.filter(s => s !== status))
-                        }
-                      }}
-                    >
-                      {status.split('_').map(word => 
-                        word.charAt(0).toUpperCase() + word.slice(1)
-                      ).join(' ')}
-                    </DropdownMenuCheckboxItem>
-                  ))}
+            )}
+            
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="gap-2">
+                  <Filter className="h-4 w-4" />
+                  Filter
                   {statusFilter.length > 0 && (
-                    <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => setStatusFilter([])}>
-                        Clear filters
-                      </DropdownMenuItem>
-                    </>
+                    <Badge variant="secondary" className="ml-1">
+                      {statusFilter.length}
+                    </Badge>
                   )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-              
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56">
+                <div className="px-2 py-1.5 text-sm font-semibold">Status</div>
+                <DropdownMenuSeparator />
+                {BOOKING_STATUSES.map((status) => (
+                  <DropdownMenuCheckboxItem
+                    key={status}
+                    checked={statusFilter.includes(status)}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setStatusFilter([...statusFilter, status])
+                      } else {
+                        setStatusFilter(statusFilter.filter(s => s !== status))
+                      }
+                    }}
+                  >
+                    {status.split('_').map(word => 
+                      word.charAt(0).toUpperCase() + word.slice(1)
+                    ).join(' ')}
+                  </DropdownMenuCheckboxItem>
+                ))}
+                {statusFilter.length > 0 && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => setStatusFilter([])}>
+                      Clear filters
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            
+            <div className="ml-auto flex items-center gap-2">
               <Button 
                 variant={viewMode === 'table' ? 'default' : 'outline'} 
                 className="gap-2"
@@ -270,8 +332,6 @@ export default function BookingsPage() {
                 <Download className="h-4 w-4" />
                 Export
               </Button>
-              
-              <BookingDialog onSuccess={handleBookingSuccess} />
             </div>
           </div>
         </div>
@@ -303,7 +363,7 @@ export default function BookingsPage() {
             <CardContent>
               <div className="text-2xl font-bold">
                 {filteredBookings.filter(b => 
-                  ['in_process', 'content_submitted', 'approved'].includes(b.status)
+                  ['deal', 'delivered', 'content_submitted', 'approved'].includes(b.status)
                 ).length}
               </div>
             </CardContent>
@@ -319,7 +379,12 @@ export default function BookingsPage() {
             <CardContent>
               <div className="text-2xl font-bold">
                 {formatCurrency(
-                  filteredBookings.reduce((sum, b) => sum + (b.agreed_amount || b.offer_amount || 0), 0)
+                  filteredBookings.reduce((sum, b) => sum + (
+                    b.agreed_amount || 
+                    b.offer_amount || 
+                    (b.creator?.rate_card ? Object.values(b.creator.rate_card)[0] as number : 0) || 
+                    0
+                  ), 0)
                 )}
               </div>
             </CardContent>
@@ -406,26 +471,30 @@ export default function BookingsPage() {
                           
                           <div className="space-y-1 mb-3">
                             <div className="text-xs text-gray-600">
-                              {formatCurrency(booking.agreed_amount || booking.offer_amount || 0)}
+                              {formatCurrency(
+                                booking.agreed_amount || 
+                                booking.offer_amount || 
+                                (booking.creator?.rate_card ? Object.values(booking.creator.rate_card)[0] : 0) || 
+                                0
+                              )}
                             </div>
                             
-                            {(booking as any).scheduled_date && (
+                            {booking.deadline && (
                               <div className="flex items-center gap-1 text-xs">
                                 <Clock className="h-3 w-3" />
-                                <span className={getDaysUntilDeadline(booking).isOverdue ? 'text-red-600 font-medium' : 'text-gray-500'}>
-                                  {getDaysUntilDeadline(booking).message}
+                                <span className={new Date(booking.deadline) < new Date() ? 'text-red-600 font-medium' : 'text-gray-500'}>
+                                  Due {formatDate(new Date(booking.deadline))}
                                 </span>
                               </div>
                             )}
                             
-                            {(booking as any).content_type && (
-                              <div className="text-xs text-gray-500">
-                                Content: {(booking as any).content_type}
-                              </div>
-                            )}
-                            
-                            <div className="text-xs text-gray-400">
-                              Created {formatDate(new Date(booking.created_at))}
+                            <div className="flex items-center justify-between text-xs text-gray-400">
+                              <span>Created {formatDate(new Date(booking.created_at))}</span>
+                              <UserAvatar 
+                                user={booking.created_by} 
+                                size="sm" 
+                                className="opacity-70" 
+                              />
                             </div>
                           </div>
                           
@@ -481,7 +550,8 @@ export default function BookingsPage() {
                     <TableHead>Campaign</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Rate</TableHead>
-                    <TableHead>Brief</TableHead>
+                    <TableHead>Deadline</TableHead>
+                    <TableHead>Created By</TableHead>
                     <TableHead>Created</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
@@ -535,12 +605,32 @@ export default function BookingsPage() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {formatCurrency(booking.agreed_amount || booking.offer_amount || 0)}
+                        {/* Pull rate from creator data if available, otherwise use booking data */}
+                        {formatCurrency(
+                          booking.agreed_amount || 
+                          booking.offer_amount || 
+                          (booking.creator?.rate_card ? Object.values(booking.creator.rate_card)[0] : 0) || 
+                          0
+                        )}
                       </TableCell>
                       <TableCell>
-                        <div title={booking.brief || 'No brief'}>
-                          {booking.brief ? booking.brief.substring(0, 50) + '...' : '-'}
+                        <div className="text-sm">
+                          {booking.deadline ? (
+                            <span className={new Date(booking.deadline) < new Date() ? 'text-red-600 font-medium' : 'text-gray-600'}>
+                              {formatDate(new Date(booking.deadline))}
+                            </span>
+                          ) : (
+                            <span className="text-gray-400">No deadline</span>
+                          )}
                         </div>
+                      </TableCell>
+                      <TableCell>
+                        <UserAvatar 
+                          user={booking.created_by} 
+                          size="sm" 
+                          showName 
+                          className="min-w-0" 
+                        />
                       </TableCell>
                       <TableCell>
                         {formatDate(new Date(booking.created_at))}

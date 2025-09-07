@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { createAdminClient } from '@/utils/supabase/server'
+import { createAdminClient, createClient } from '@/utils/supabase/server'
 import type { Payment, CreatePaymentData, UpdatePaymentData, PaymentStatus } from '@/types'
 
 export async function getPayments(): Promise<Payment[]> {
@@ -51,11 +51,24 @@ export async function getPayment(id: string): Promise<Payment | null> {
 
 export async function createPayment(paymentData: CreatePaymentData) {
   const supabase = await createAdminClient()
+  const clientSupabase = await createClient()
+  
+  // Get current user for actor field
+  const { data: { user }, error: userError } = await clientSupabase.auth.getUser()
+  if (userError || !user) {
+    throw new Error('User not authenticated')
+  }
+  
+  // Map status to database-compatible value
+  const dbPaymentData = {
+    ...paymentData,
+    status: paymentData.status ? mapStatusForDatabase(paymentData.status) : 'pending',
+    actor: user.id
+  }
+  
   const { data, error } = await supabase
     .from('payments')
-    .insert({
-      ...paymentData
-    })
+    .insert(dbPaymentData)
     .select(`
       *,
       booking:bookings(

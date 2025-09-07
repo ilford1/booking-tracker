@@ -21,7 +21,7 @@ export async function getDashboardKPIs(): Promise<DashboardKPIs> {
     const { data: weeklyBookings, error: weeklyError } = await supabase
       .from('bookings')
       .select('id')
-      .in('status', ['booked', 'content_due', 'submitted', 'approved', 'posted'])
+      .in('status', ['deal', 'delivered', 'content_submitted', 'approved', 'completed'])
       .gte('created_at', weekAgo)
 
     if (weeklyError) throw weeklyError
@@ -45,20 +45,21 @@ export async function getDashboardKPIs(): Promise<DashboardKPIs> {
 
     const totalBudget = campaignBudgets?.reduce((sum, campaign) => sum + (campaign.budget || 0), 0) || 0
 
-    // Get pending deliverables
-    const { data: pendingDeliverables, error: deliverableError } = await supabase
-      .from('deliverables')
+    // Get pending bookings (not completed)
+    const { data: pendingBookings, error: pendingError } = await supabase
+      .from('bookings')
       .select('id')
-      .not('status', 'in', '(posted,approved)')
+      .not('status', 'in', '(completed)')
 
-    if (deliverableError) throw deliverableError
+    if (pendingError) throw pendingError
 
-    // Get overdue tasks
-    const { data: overdueTasks, error: overdueError } = await supabase
-      .from('deliverables')
+    // Get overdue bookings
+    const { data: overdueBookings, error: overdueError } = await supabase
+      .from('bookings')
       .select('id')
-      .lt('due_date', today)
-      .not('status', 'in', '(posted,approved)')
+      .lt('deadline', today)
+      .not('status', 'in', '(completed)')
+      .not('deadline', 'is', null)
 
     if (overdueError) throw overdueError
 
@@ -67,8 +68,8 @@ export async function getDashboardKPIs(): Promise<DashboardKPIs> {
       bookedPostsThisWeek: weeklyBookings?.length || 0,
       budgetUsed,
       totalBudget,
-      pendingDeliverables: pendingDeliverables?.length || 0,
-      overdueTasks: overdueTasks?.length || 0,
+      pendingDeliverables: pendingBookings?.length || 0,
+      overdueTasks: overdueBookings?.length || 0,
     }
   } catch (error) {
     console.error('Error fetching dashboard KPIs:', error)
@@ -151,24 +152,21 @@ export async function getRecentActivity(): Promise<any[]> {
 
     if (paymentError) throw paymentError
 
-    // Get recent deliverables
-    const { data: recentDeliverables, error: deliverableError } = await supabase
-      .from('deliverables')
+    // Get recent campaigns
+    const { data: recentCampaigns, error: campaignError } = await supabase
+      .from('campaigns')
       .select(`
         id,
-        status,
-        link,
+        name,
+        start_date,
+        end_date,
         created_at,
-        updated_at,
-        booking:bookings(
-          creator:creators(name, handle),
-          campaign:campaigns(name)
-        )
+        updated_at
       `)
       .order('updated_at', { ascending: false })
       .limit(10)
 
-    if (deliverableError) throw deliverableError
+    if (campaignError) throw campaignError
 
     // Combine and sort all activities by timestamp
     const activities = [
@@ -182,10 +180,10 @@ export async function getRecentActivity(): Promise<any[]> {
         timestamp: payment.paid_at || payment.created_at,
         data: payment
       })) || []),
-      ...(recentDeliverables?.map(deliverable => ({
-        type: 'deliverable',
-        timestamp: deliverable.updated_at,
-        data: deliverable
+      ...(recentCampaigns?.map(campaign => ({
+        type: 'campaign',
+        timestamp: campaign.updated_at,
+        data: campaign
       })) || [])
     ]
 

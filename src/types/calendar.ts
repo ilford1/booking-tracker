@@ -1,10 +1,11 @@
-import type { Booking, Deliverable } from '@/types/database'
+import type { Booking } from '@/types/database'
 import type { BookingStatus } from '@/types/booking-workflow'
 
 // Calendar event types
 export type CalendarEventType = 
   | 'booking_deadline'      // Booking completion deadline
   | 'deliverable_due'       // Deliverable due date
+  | 'delivery_tracking'     // Delivery tracking event
   | 'content_review'        // Content review scheduled
   | 'approval_needed'       // Approval milestone
   | 'payment_due'          // Payment schedule
@@ -46,7 +47,6 @@ export interface CalendarEvent {
   
   // Relations (populated by joins)
   booking?: Booking
-  deliverable?: Deliverable
 }
 
 // Calendar view modes
@@ -115,5 +115,5 @@ export interface CalendarPreferences {
 }
 
 // Form types
-export type CreateEventData = Omit<CalendarEvent, 'id' | 'booking' | 'deliverable'>
+export type CreateEventData = Omit<CalendarEvent, 'id' | 'booking'>
 export type UpdateEventData = Partial<CreateEventData>

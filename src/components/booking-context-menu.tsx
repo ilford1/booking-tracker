@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useForceRefresh } from '@/hooks/use-force-refresh'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,16 +21,18 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
+import { DetailsDialog } from '@/components/dialogs/details-dialog'
+import { BookingPaymentDialog } from '@/components/dialogs/booking-payment-dialog'
 import { toast } from 'sonner'
 import {
-  Copy,
   ExternalLink,
   CreditCard,
-  MessageSquare,
   Archive,
   Trash2,
   Download,
-  MoreHorizontal
+  MoreHorizontal,
+  User,
+  Megaphone
 } from 'lucide-react'
 import type { Booking } from '@/types/database'
 import { BookingStatus } from '@/types/booking-workflow'
@@ -44,40 +47,11 @@ interface BookingContextMenuProps {
 
 export function BookingActionsMenu({ booking, onStatusUpdate, onDelete }: Omit<BookingContextMenuProps, 'children'>) {
   const router = useRouter()
+  const { forceRefresh, softRefresh } = useForceRefresh()
   const [isDeleting, setIsDeleting] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 
-  const copyBookingId = () => {
-    navigator.clipboard.writeText(booking.id)
-    toast.success('Booking ID copied to clipboard')
-  }
 
-  const copyBookingUrl = () => {
-    const url = `${window.location.origin}/bookings/${booking.id}`
-    navigator.clipboard.writeText(url)
-    toast.success('Booking URL copied to clipboard')
-  }
-
-  const navigateToCreator = () => {
-    if (booking.creator_id) {
-      router.push(`/creators/${booking.creator_id}`)
-    } else {
-      toast.error('No creator associated with this booking')
-    }
-  }
-
-  const navigateToCampaign = () => {
-    if (booking.campaign_id) {
-      router.push(`/campaigns/${booking.campaign_id}`)
-    } else {
-      toast.error('No campaign associated with this booking')
-    }
-  }
-
-  const createPayment = () => {
-    // In a real implementation, this would open a payment creation dialog
-    toast.info('Payment creation feature would be implemented here')
-  }
 
   const downloadContract = () => {
     if (booking.contract_url) {
@@ -87,64 +61,39 @@ export function BookingActionsMenu({ booking, onStatusUpdate, onDelete }: Omit<B
     }
   }
 
-  const getQuickActions = () => {
-    const actions = []
-
-    // Status-based actions
-    switch (booking.status as BookingStatus) {
-      case 'pending':
-        actions.push('Start Work', 'Cancel')
-        break
-      case 'in_process':
-        actions.push('Mark Submitted', 'Request Update')
-        break
-      case 'content_submitted':
-        // Removed Review Content and Request Revision - handled separately
-        break
-      case 'approved':
-        actions.push('Mark Completed', 'Create Payment')
-        break
-      default:
-        break
-    }
-
-    return actions
-  }
-
-  const handleQuickAction = (action: string) => {
-    toast.info(`${action} feature would be implemented here`)
-    // In a real implementation, these would trigger actual status changes
-    onStatusUpdate?.()
-  }
 
   const handleDelete = async () => {
     setIsDeleting(true)
     try {
-      console.log('Deleting booking:', booking.id)
-      await deleteBooking(booking.id)
-      console.log('Booking deleted successfully')
+      console.log('🗑️ Starting deletion of booking:', booking.id)
+      const result = await deleteBooking(booking.id)
+      console.log('✅ Booking deleted successfully:', result)
       
       toast.success('Booking deleted successfully')
       setShowDeleteDialog(false)
       
-      // Force refresh after a small delay to ensure the deletion completes
+      // Immediate callback to update parent state
+      if (onDelete) {
+        console.log('🔄 Calling onDelete callback')
+        onDelete()
+      } else if (onStatusUpdate) {
+        console.log('🔄 Calling onStatusUpdate callback')
+        onStatusUpdate()
+      }
+      
+      // Force a complete page refresh to ensure the booking is removed from UI
       setTimeout(() => {
-        if (onDelete) {
-          onDelete()
-        } else {
-          onStatusUpdate?.()
-        }
-      }, 100)
+        console.log('🔄 Force refreshing after deletion to clear cache')
+        forceRefresh()
+      }, 500)
       
     } catch (error) {
-      console.error('Error deleting booking:', error)
+      console.error('❌ Error deleting booking:', error)
       toast.error(`Failed to delete booking: ${error instanceof Error ? error.message : 'Unknown error'}`)
     } finally {
       setIsDeleting(false)
     }
   }
-
-  const quickActions = getQuickActions()
 
   return (
     <DropdownMenu>
@@ -155,76 +104,62 @@ export function BookingActionsMenu({ booking, onStatusUpdate, onDelete }: Omit<B
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56" align="end">
-        {/* Primary Actions */}
-        <DropdownMenuSeparator />
-
-        {/* Navigation */}
-        {booking.creator_id && (
-          <DropdownMenuItem onClick={navigateToCreator}>
-            <ExternalLink className="mr-2 h-4 w-4" />
-            View Creator Profile
-          </DropdownMenuItem>
-        )}
-
-        {booking.campaign_id && (
-          <DropdownMenuItem onClick={navigateToCampaign}>
-            <ExternalLink className="mr-2 h-4 w-4" />
-            View Campaign
-          </DropdownMenuItem>
-        )}
-
-        <DropdownMenuSeparator />
-
-        {/* Quick Status Actions */}
-        {quickActions.length > 0 && (
-          <>
-            {quickActions.map((action) => (
-              <DropdownMenuItem 
-                key={action} 
-                onClick={() => handleQuickAction(action)}
-                className="text-blue-600"
-              >
-                <MessageSquare className="mr-2 h-4 w-4" />
-                {action}
+        {/* View Actions */}
+        {booking.creator && (
+          <DetailsDialog
+            data={booking.creator}
+            type="creator"
+            trigger={
+              <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                <User className="mr-2 h-4 w-4" />
+                View Creator Profile
               </DropdownMenuItem>
-            ))}
+            }
+          />
+        )}
+
+        {booking.campaign && (
+          <DetailsDialog
+            data={booking.campaign}
+            type="campaign"
+            trigger={
+              <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                <Megaphone className="mr-2 h-4 w-4" />
+                View Campaign
+              </DropdownMenuItem>
+            }
+          />
+        )}
+
+        <DropdownMenuSeparator />
+
+        {/* Financial Actions */}
+        <BookingPaymentDialog
+          booking={booking}
+          onSuccess={onStatusUpdate}
+          trigger={
+            <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+              <CreditCard className="mr-2 h-4 w-4" />
+              Create Payment
+            </DropdownMenuItem>
+          }
+        />
+
+        {/* File Actions */}
+        {booking.contract_url && (
+          <>
+            <DropdownMenuItem onClick={downloadContract}>
+              <Download className="mr-2 h-4 w-4" />
+              Download Contract
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
           </>
         )}
 
-        {/* Financial Actions */}
-        <DropdownMenuItem onClick={createPayment}>
-          <CreditCard className="mr-2 h-4 w-4" />
-          Create Payment
-        </DropdownMenuItem>
-
-        {/* File Actions */}
-        {booking.contract_url && (
-          <DropdownMenuItem onClick={downloadContract}>
-            <Download className="mr-2 h-4 w-4" />
-            Download Contract
-          </DropdownMenuItem>
-        )}
-
-        <DropdownMenuSeparator />
-
-        {/* Utility Actions */}
-        <DropdownMenuItem onClick={copyBookingId}>
-          <Copy className="mr-2 h-4 w-4" />
-          Copy Booking ID
-        </DropdownMenuItem>
-
-        <DropdownMenuItem onClick={copyBookingUrl}>
-          <Copy className="mr-2 h-4 w-4" />
-          Copy Booking Link
-        </DropdownMenuItem>
-
-        <DropdownMenuSeparator />
-
         {/* Danger Actions */}
-        {booking.status !== 'completed' && booking.status !== 'canceled' && (
+        {booking.status !== 'completed' && (
           <DropdownMenuItem 
-            onClick={() => handleQuickAction('Archive')}
+            onClick={() => toast.info('Archive feature would be implemented here')}
             className="text-orange-600"
           >
             <Archive className="mr-2 h-4 w-4" />

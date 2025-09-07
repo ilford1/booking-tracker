@@ -12,25 +12,21 @@ import type {
   CreateEventData,
   UpdateEventData
 } from '@/types/calendar'
-import type { Booking, Deliverable } from '@/types/database'
+import type { Booking } from '@/types/database'
 import type { BookingStatus } from '@/types/booking-workflow'
 
-// Get all calendar events with booking and deliverable relationships
+// Get all calendar events from bookings only (simplified workflow)
 export async function getCalendarEvents(
   startDate?: Date, 
   endDate?: Date
 ): Promise<CalendarEvent[]> {
   const supabase = await createAdminClient()
   
-  // Get events from multiple sources and combine them
-  const [bookings, deliverables] = await Promise.all([
-    getBookingEvents(startDate, endDate),
-    getDeliverableEvents(startDate, endDate)
-  ])
+  // Get events from bookings only
+  const bookings = await getBookingEvents(startDate, endDate)
   
-  // Combine and sort all events
-  const allEvents = [...bookings, ...deliverables]
-    .sort((a, b) => a.start_date.getTime() - b.start_date.getTime())
+  // Sort events by date
+  const allEvents = bookings.sort((a, b) => a.start_date.getTime() - b.start_date.getTime())
   
   return allEvents
 }
@@ -48,10 +44,11 @@ async function getBookingEvents(startDate?: Date, endDate?: Date): Promise<Calen
     `)
     .order('created_at', { ascending: true })
 
+  // Filter by deadline if dates provided, otherwise use created_at
   if (startDate && endDate) {
     query = query
-      .gte('created_at', startDate.toISOString())
-      .lte('created_at', endDate.toISOString())
+      .or(`deadline.gte.${startDate.toISOString().split('T')[0]},created_at.gte.${startDate.toISOString()}`)
+      .or(`deadline.lte.${endDate.toISOString().split('T')[0]},created_at.lte.${endDate.toISOString()}`)
   }
 
   const { data: bookings, error } = await query
@@ -64,14 +61,20 @@ async function getBookingEvents(startDate?: Date, endDate?: Date): Promise<Calen
   const events: CalendarEvent[] = []
 
   bookings?.forEach((booking: Booking) => {
-    // Booking deadline event (estimated completion date)
-    const estimatedCompletionDays = getEstimatedCompletionDays(booking.status)
-    const deadlineDate = addDays(new Date(booking.created_at), estimatedCompletionDays)
+    // Use deadline if available, otherwise estimate from created_at
+    let deadlineDate: Date
+    
+    if (booking.deadline) {
+      deadlineDate = new Date(booking.deadline)
+    } else {
+      const estimatedCompletionDays = getEstimatedCompletionDays(booking.status)
+      deadlineDate = addDays(new Date(booking.created_at), estimatedCompletionDays)
+    }
     
     events.push({
       id: `booking-deadline-${booking.id}`,
       title: `${booking.creator?.name || 'Unknown'} - ${booking.campaign?.name || 'No Campaign'}`,
-      description: `Booking deadline for ${booking.status.replace('_', ' ')} status`,
+      description: `Estimated deadline - ${booking.status.replace('_', ' ')} status`,
       type: 'booking_deadline',
       priority: getBookingPriority(booking.status),
       status: getEventStatus(booking.status, deadlineDate),
@@ -84,6 +87,24 @@ async function getBookingEvents(startDate?: Date, endDate?: Date): Promise<Calen
       url: `/bookings/${booking.id}`,
       booking
     })
+
+    // Add delivery tracking event for delivered status
+    if (booking.status === 'delivered' && booking.tracking_number) {
+      events.push({
+        id: `delivery-tracking-${booking.id}`,
+        title: `Delivery: ${booking.creator?.name} - ${booking.tracking_number}`,
+        description: `Package delivered, awaiting confirmation`,
+        type: 'delivery_tracking',
+        priority: 'medium',
+        status: 'scheduled',
+        start_date: booking.delivered_at ? new Date(booking.delivered_at) : new Date(),
+        all_day: false,
+        booking_id: booking.id,
+        color: '#fb923c',
+        url: `/bookings/${booking.id}`,
+        booking
+      })
+    }
 
     // Status milestone events
     if (booking.status === 'content_submitted') {
@@ -107,65 +128,7 @@ async function getBookingEvents(startDate?: Date, endDate?: Date): Promise<Calen
   return events
 }
 
-// Generate calendar events from deliverables
-async function getDeliverableEvents(startDate?: Date, endDate?: Date): Promise<CalendarEvent[]> {
-  const supabase = await createAdminClient()
-  
-  let query = supabase
-    .from('deliverables')
-    .select(`
-      *,
-      booking:bookings(
-        *,
-        campaign:campaigns(*),
-        creator:creators(*)
-      )
-    `)
-    .order('due_date', { ascending: true, nullsFirst: false })
-
-  if (startDate && endDate) {
-    query = query
-      .gte('due_date', startDate.toISOString())
-      .lte('due_date', endDate.toISOString())
-  }
-
-  const { data: deliverables, error } = await query
-
-  if (error) {
-    console.error('Error fetching deliverables for calendar:', error)
-    return []
-  }
-
-  const events: CalendarEvent[] = []
-
-  deliverables?.forEach((deliverable: Deliverable) => {
-    if (!deliverable.due_date) return
-
-    const dueDate = new Date(deliverable.due_date)
-    
-    events.push({
-      id: `deliverable-${deliverable.id}`,
-      title: `${deliverable.title || deliverable.type} - ${deliverable.booking?.creator?.name || 'Unknown'}`,
-      description: `${deliverable.type} deliverable for ${deliverable.booking?.campaign?.name}`,
-      type: 'deliverable_due',
-      priority: getDeliverablePriority(deliverable.status, dueDate),
-      status: getDeliverableEventStatus(deliverable.status, dueDate),
-      start_date: dueDate,
-      end_date: deliverable.publish_date ? new Date(deliverable.publish_date) : undefined,
-      all_day: true,
-      booking_id: deliverable.booking_id || undefined,
-      deliverable_id: deliverable.id,
-      campaign_id: deliverable.booking?.campaign_id || undefined,
-      creator_id: deliverable.booking?.creator_id || undefined,
-      color: getDeliverableStatusColor(deliverable.status),
-      url: `/bookings/${deliverable.booking_id}`,
-      deliverable,
-      booking: deliverable.booking
-    })
-  })
-
-  return events
-}
+// Deliverable events removed - simplified to booking-only workflow
 
 // Get calendar statistics
 export async function getCalendarStats(
@@ -218,24 +181,24 @@ export async function createCalendarEvent(eventData: CreateEventData): Promise<C
   return event
 }
 
-// Update deliverable due date (affects calendar)
-export async function updateDeliverableDueDate(
-  deliverableId: string, 
-  newDueDate: Date
+// Update booking deadline (affects calendar)
+export async function updateBookingDeadline(
+  bookingId: string, 
+  newDeadline: Date
 ): Promise<void> {
   const supabase = await createAdminClient()
   
   const { error } = await supabase
-    .from('deliverables')
+    .from('bookings')
     .update({
-      due_date: newDueDate.toISOString(),
+      deadline: newDeadline.toISOString().split('T')[0],
       updated_at: new Date().toISOString()
     })
-    .eq('id', deliverableId)
+    .eq('id', bookingId)
   
   if (error) {
-    console.error('Error updating deliverable due date:', error)
-    throw new Error('Failed to update deliverable due date')
+    console.error('Error updating booking deadline:', error)
+    throw new Error('Failed to update booking deadline')
   }
   
   revalidatePath('/calendar')
@@ -245,115 +208,99 @@ export async function updateDeliverableDueDate(
 // Helper functions
 function getEstimatedCompletionDays(status: BookingStatus): number {
   const estimations = {
-    pending: 7,
-    in_process: 14,
+    pending: 14,
+    deal: 10,
+    delivered: 7,
     content_submitted: 3,
     approved: 1,
-    completed: 0,
-    canceled: 0
+    completed: 0
   }
   return estimations[status] || 7
 }
 
 function getBookingPriority(status: BookingStatus): EventPriority {
   switch (status) {
+    case 'pending': return 'low'
+    case 'deal': return 'medium'
+    case 'delivered': return 'medium'
     case 'content_submitted': return 'high'
     case 'approved': return 'urgent'
-    case 'in_process': return 'medium'
     default: return 'low'
   }
 }
 
-function getDeliverablePriority(status: string, dueDate: Date): EventPriority {
-  const now = new Date()
-  const daysDiff = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-  
-  if (daysDiff < 0) return 'urgent' // Overdue
-  if (daysDiff <= 1) return 'high'  // Due today/tomorrow
-  if (daysDiff <= 3) return 'medium' // Due this week
-  return 'low'
-}
+// Deliverable priority function removed - no longer needed
 
 function getEventStatus(bookingStatus: BookingStatus, eventDate: Date): EventStatus {
   const now = new Date()
   
   if (bookingStatus === 'completed') return 'completed'
-  if (bookingStatus === 'canceled') return 'cancelled'
   if (eventDate < now) return 'overdue'
-  if (bookingStatus === 'in_process') return 'in_progress'
+  if (bookingStatus === 'content_submitted' || bookingStatus === 'approved') return 'in_progress'
   return 'scheduled'
 }
 
-function getDeliverableEventStatus(deliverableStatus: string, dueDate: Date): EventStatus {
-  const now = new Date()
-  
-  switch (deliverableStatus) {
-    case 'posted':
-    case 'approved': return 'completed'
-    case 'submitted': return 'in_progress'
-    default:
-      return dueDate < now ? 'overdue' : 'scheduled'
-  }
-}
+// Deliverable event status function removed - no longer needed
 
 function getBookingStatusColor(status: BookingStatus): string {
   const colors = {
     pending: '#f59e0b',      // yellow
-    in_process: '#3b82f6',   // blue
+    deal: '#3b82f6',         // blue
+    delivered: '#fb923c',    // orange
     content_submitted: '#8b5cf6', // purple
     approved: '#10b981',     // green
-    completed: '#059669',    // emerald
-    canceled: '#ef4444'      // red
+    completed: '#059669'     // emerald
   }
   return colors[status] || '#6b7280'
 }
 
-function getDeliverableStatusColor(status: string): string {
-  const colors: Record<string, string> = {
-    planned: '#6b7280',      // gray
-    due: '#f59e0b',          // yellow
-    submitted: '#8b5cf6',    // purple
-    revision: '#f97316',     // orange
-    approved: '#10b981',     // green
-    scheduled: '#3b82f6',    // blue
-    posted: '#059669'        // emerald
-  }
-  return colors[status] || '#6b7280'
-}
+// Deliverable status color function removed - no longer needed
 
-// Quick action to mark deliverable as submitted
-export async function markDeliverableSubmitted(deliverableId: string): Promise<void> {
+// Quick action to update booking tracking number
+export async function updateBookingTrackingNumber(bookingId: string, trackingNumber: string): Promise<void> {
   const supabase = await createAdminClient()
   
-  const { error } = await supabase
-    .from('deliverables')
+  // First update just the tracking fields
+  const { error: trackingError } = await supabase
+    .from('bookings')
     .update({
-      status: 'submitted',
+      tracking_number: trackingNumber,
+      delivered_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     })
-    .eq('id', deliverableId)
+    .eq('id', bookingId)
   
-  if (error) {
-    console.error('Error marking deliverable as submitted:', error)
-    throw new Error('Failed to mark deliverable as submitted')
+  if (trackingError) {
+    console.error('Error updating tracking number:', trackingError)
+    throw new Error('Failed to update tracking number')
+  }
+  
+  // Then update the status separately using updateBookingStatus
+  try {
+    const { updateBookingStatus } = await import('./bookings')
+    await updateBookingStatus(bookingId, 'delivered')
+  } catch (statusError) {
+    console.error('Error updating status to delivered:', statusError)
+    // Don't throw here as the tracking number was already saved
+    console.warn('Tracking number saved but status update failed')
   }
   
   revalidatePath('/calendar')
+  revalidatePath('/bookings')
 }
 
-// Reschedule event (placeholder for drag & drop functionality)
+// Reschedule event (simplified for booking-only workflow)
 export async function rescheduleEvent(eventId: string, startDate: Date, endDate?: Date): Promise<void> {
-  // This would typically update the booking or deliverable date
-  // For now, we'll just log the action as it would require complex logic
-  // to determine if this is a booking deadline or deliverable due date
+  // Extract booking ID from event ID
+  const bookingId = eventId.replace('booking-deadline-', '').replace('delivery-tracking-', '').replace('approval-needed-', '')
   
-  console.log('Reschedule event:', { eventId, startDate, endDate })
+  console.log('Reschedule event:', { eventId, bookingId, startDate, endDate })
   
-  // TODO: Implement actual rescheduling logic based on event type
-  // This would need to update either:
-  // - booking.publication_date or booking.deadline
-  // - deliverable.due_date
-  
-  // For now, throw an error to indicate this feature needs implementation
-  throw new Error('Event rescheduling not yet implemented')
+  // Update booking deadline
+  try {
+    await updateBookingDeadline(bookingId, startDate)
+  } catch (error) {
+    console.error('Failed to reschedule booking:', error)
+    throw new Error('Failed to reschedule booking event')
+  }
 }

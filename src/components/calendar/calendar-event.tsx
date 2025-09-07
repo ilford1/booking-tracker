@@ -29,7 +29,6 @@ import {
   ArrowRight
 } from 'lucide-react'
 import type { CalendarEvent } from '@/types/calendar'
-import { markDeliverableSubmitted } from '@/lib/actions/calendar'
 
 interface CalendarEventProps {
   event: CalendarEvent
@@ -50,11 +49,7 @@ export function CalendarEventComponent({
     try {
       switch (action) {
         case 'mark_submitted':
-          if (event.deliverable_id) {
-            await markDeliverableSubmitted(event.deliverable_id)
-            toast.success('Deliverable marked as submitted')
-            onUpdate?.()
-          }
+          toast.info('This feature would be implemented with booking status updates')
           break
         case 'view_booking':
           if (event.booking_id) {
@@ -112,8 +107,8 @@ export function CalendarEventComponent({
   const getQuickActions = () => {
     const actions = []
     
-    if (event.deliverable_id && event.deliverable?.status === 'due') {
-      actions.push({ key: 'mark_submitted', label: 'Mark Submitted', icon: CheckCircle2 })
+    if (event.type === 'booking_deadline' && event.booking?.status === 'delivered') {
+      actions.push({ key: 'mark_submitted', label: 'Update Status', icon: CheckCircle2 })
     }
     
     if (event.booking_id) {

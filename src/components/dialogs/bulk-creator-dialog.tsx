@@ -52,7 +52,7 @@ export function BulkCreatorDialog({
       const filtered = creators.filter(creator => 
         creator.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (creator.handle && creator.handle.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        (creator.email && creator.email.toLowerCase().includes(searchQuery.toLowerCase()))
+        (creator.address && creator.address.toLowerCase().includes(searchQuery.toLowerCase()))
       )
       setFilteredCreators(filtered)
     } else {
@@ -234,8 +234,8 @@ export function BulkCreatorDialog({
                           )}
                         </div>
                       </div>
-                      {creator.email && (
-                        <div className="text-sm text-gray-500 mt-1">{creator.email}</div>
+                      {creator.address && (
+                        <div className="text-sm text-gray-500 mt-1">📍 {creator.address}</div>
                       )}
                     </div>
                   </div>

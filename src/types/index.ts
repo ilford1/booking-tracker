@@ -28,35 +28,14 @@ export interface PerformanceMetrics {
 // Constants for the app
 export const BOOKING_STATUSES = [
   'pending',
-  'in_process',
+  'deal',
+  'delivered',
   'content_submitted',
   'approved',
-  'completed',
-  'canceled'
+  'completed'
 ] as const
 
-export const DELIVERABLE_TYPES = [
-  'post',
-  'reel', 
-  'story',
-  'live',
-  'video',
-  'tiktok',
-  'short',
-  'carousel',
-  'album',
-  'other'
-] as const
-
-export const DELIVERABLE_STATUSES = [
-  'planned',
-  'due',
-  'submitted',
-  'revision', 
-  'approved',
-  'scheduled',
-  'posted'
-] as const
+// Deliverable constants removed - simplified to booking-only workflow
 
 export const PAYMENT_STATUSES = [
   'unconfirmed',
@@ -112,28 +91,18 @@ export const FILE_SCOPES = [
 export const STATUS_COLORS = {
   // Booking statuses (simplified)
   pending: 'bg-yellow-100 text-yellow-800',
-  in_process: 'bg-blue-100 text-blue-800',
+  deal: 'bg-blue-100 text-blue-800',
+  delivered: 'bg-orange-100 text-orange-800',
   content_submitted: 'bg-purple-100 text-purple-800',
   approved: 'bg-green-100 text-green-800',
   completed: 'bg-emerald-100 text-emerald-800',
-  canceled: 'bg-red-100 text-red-800',
-  
-  // Deliverable statuses
-  planned: 'bg-gray-100 text-gray-800',
-  due: 'bg-red-100 text-red-800',
-  revision: 'bg-yellow-100 text-yellow-800',
-  scheduled: 'bg-blue-100 text-blue-800',
   
   // Payment statuses
   unconfirmed: 'bg-gray-100 text-gray-800',
   pending_invoice: 'bg-yellow-100 text-yellow-800',
   waiting_payment: 'bg-orange-100 text-orange-800',
-  failed: 'bg-red-100 text-red-800',
+  paid: 'bg-green-100 text-green-800',
+  failed: 'bg-red-100 text-red-800'
   
-  // Sendout statuses
-  requested: 'bg-gray-100 text-gray-800',
-  packed: 'bg-blue-100 text-blue-800',
-  shipped: 'bg-purple-100 text-purple-800',
-  delivered: 'bg-green-100 text-green-800',
-  returned: 'bg-orange-100 text-orange-800'
+  // Note: Sendout status colors removed to avoid conflicts
 } as const

@@ -63,20 +63,12 @@ export function DetailsDialog({ trigger, data, type }: DetailsDialogProps) {
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <div className="text-sm font-medium text-gray-600">Name</div>
-                      <div className="text-sm">{creator.name}</div>
-                    </div>
-                    <div>
-                      <div className="text-sm font-medium text-gray-600">Handle</div>
-                      <div className="text-sm">{creator.handle || 'Not set'}</div>
-                    </div>
-                    <div>
                       <div className="text-sm font-medium text-gray-600">Platform</div>
                       <div className="text-sm capitalize">{creator.platform || 'Not set'}</div>
                     </div>
                     <div>
-                      <div className="text-sm font-medium text-gray-600">Post Rate</div>
-                      <div className="text-sm">{creator.rate_card && typeof creator.rate_card === 'object' && (creator.rate_card as any).post ? formatCurrency((creator.rate_card as any).post) : 'Not set'}</div>
+                      <div className="text-sm font-medium text-gray-600">Handle</div>
+                      <div className="text-sm">{creator.handle || 'Not set'}</div>
                     </div>
                   </div>
 

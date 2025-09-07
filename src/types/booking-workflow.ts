@@ -1,44 +1,15 @@
-// Simplified booking workflow types - 6 states only
+// Booking workflow types - 6 states flow
 export type BookingStatus = 
-  | 'pending'         // Initial state - booking created, awaiting confirmation
-  | 'in_process'      // Booking confirmed and work is in progress
+  | 'pending'         // Initial state - booking created
+  | 'deal'            // Deal confirmed, preparing for delivery
+  | 'delivered'       // Goods shipped to KOL
   | 'content_submitted' // Content delivered by creator
   | 'approved'        // Content approved
   | 'completed'       // Fully completed
-  | 'canceled'        // Canceled
 
-export type DeliverableStatus =
-  | 'not_started'
-  | 'in_progress'
-  | 'submitted'
-  | 'under_review'
-  | 'revision_requested'
-  | 'approved'
-  | 'published'
+// Removed deliverable types - simplified to booking-only workflow
 
-export type ApprovalStatus =
-  | 'pending'
-  | 'approved'
-  | 'rejected'
-  | 'revision_requested'
-
-export interface BookingDeliverable {
-  id: string
-  booking_id: string
-  type: 'post' | 'story' | 'reel' | 'video' | 'blog' | 'other'
-  platform: 'instagram' | 'tiktok' | 'youtube' | 'facebook' | 'twitter' | 'other'
-  description: string
-  requirements: string
-  deadline: Date
-  status: DeliverableStatus
-  submission_url?: string
-  submitted_at?: Date
-  approved_at?: Date
-  approved_by?: string
-  notes?: string
-  revision_count: number
-  files?: BookingFile[]
-}
+export type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'revision_requested'
 
 export interface BookingFile {
   id: string
@@ -114,13 +85,14 @@ export interface EnhancedBooking {
   creator_id: string
   status: BookingStatus
   
-  // Enhanced workflow fields
-  deliverables: BookingDeliverable[]
-  milestones: BookingMilestone[]
+  // Simplified workflow fields (no deliverables)
   files: BookingFile[]
   comments: BookingComment[]
   timeline: BookingTimeline[]
-  approvals: BookingApproval[]
+  
+  // Shipping/delivery info
+  tracking_number?: string
+  delivered_at?: Date
   
   // Communication
   last_creator_message?: Date
@@ -140,34 +112,41 @@ export interface EnhancedBooking {
   published_at?: Date
 }
 
-// Workflow configuration - Simplified to 6 states
+// Workflow configuration - 6 states linear flow
 export const BOOKING_WORKFLOW_STEPS = [
   {
     status: 'pending' as BookingStatus,
     label: 'Pending',
-    description: 'Awaiting confirmation',
-    next: ['in_process', 'canceled'] as BookingStatus[],
+    description: 'Booking created, awaiting confirmation',
+    next: ['deal'] as BookingStatus[],
     color: 'yellow'
   },
   {
-    status: 'in_process' as BookingStatus,
-    label: 'In Process',
-    description: 'Work is in progress',
-    next: ['content_submitted', 'canceled'] as BookingStatus[],
+    status: 'deal' as BookingStatus,
+    label: 'Deal',
+    description: 'Deal confirmed, preparing delivery',
+    next: ['delivered'] as BookingStatus[],
     color: 'blue'
+  },
+  {
+    status: 'delivered' as BookingStatus,
+    label: 'Delivered',
+    description: 'Goods shipped to creator',
+    next: ['content_submitted'] as BookingStatus[],
+    color: 'orange'
   },
   {
     status: 'content_submitted' as BookingStatus,
     label: 'Content Submitted',
     description: 'Content has been submitted for review',
-    next: ['approved', 'in_process'] as BookingStatus[],
+    next: ['approved'] as BookingStatus[],
     color: 'purple'
   },
   {
     status: 'approved' as BookingStatus,
     label: 'Approved',
     description: 'Content has been approved',
-    next: ['completed', 'in_process'] as BookingStatus[],
+    next: ['completed'] as BookingStatus[],
     color: 'green'
   },
   {
@@ -176,13 +155,6 @@ export const BOOKING_WORKFLOW_STEPS = [
     description: 'Booking is fully completed',
     next: [] as BookingStatus[],
     color: 'green'
-  },
-  {
-    status: 'canceled' as BookingStatus,
-    label: 'Canceled',
-    description: 'Booking has been canceled',
-    next: [] as BookingStatus[],
-    color: 'red'
   }
 ]
 
@@ -210,11 +182,11 @@ export function getStatusLabel(status: BookingStatus): string {
 export function calculateBookingProgress(booking: Partial<EnhancedBooking>): number {
   const weights = {
     pending: 10,
-    in_process: 40,
+    deal: 20,
+    delivered: 40,
     content_submitted: 70,
     approved: 90,
-    completed: 100,
-    canceled: 0
+    completed: 100
   }
   
   return weights[booking.status as BookingStatus] || 0

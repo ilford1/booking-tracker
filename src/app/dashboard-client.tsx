@@ -125,7 +125,11 @@ export default function ClientDashboard() {
       // Fetch recent bookings for activity
       const { data: recentBookings } = await supabase
         .from('bookings')
-        .select('*')
+        .select(`
+          *,
+          creator:creators(name, handle),
+          campaign:campaigns(name)
+        `)
         .order('created_at', { ascending: false })
         .limit(5)
       
@@ -146,17 +150,19 @@ export default function ClientDashboard() {
           }
           
           let type = 'post'
-          let description = `${booking.creator_username || 'Creator'} `
+          const creatorName = booking.creator?.name || booking.creator?.handle || 'Creator'
+          const campaignName = booking.campaign?.name || 'Campaign'
+          let description = `${creatorName} `
           
           if (booking.status === 'pending') {
             type = 'review'
-            description += `submitted content for review: ${booking.campaign_name || 'Campaign'}`
+            description += `submitted content for review: ${campaignName}`
           } else if (booking.status === 'confirmed') {
             type = 'post'
-            description += `posted content for ${booking.campaign_name || 'Campaign'}`
-          } else if (booking.status === 'delivered') {
+            description += `posted content for ${campaignName}`
+          } else if (booking.status === 'completed') {
             type = 'payment'
-            description = `Payment of ${formatCurrency(booking.amount)} processed for ${booking.creator_username || 'Creator'}`
+            description = `Payment of ${formatCurrency(booking.agreed_amount || booking.offer_amount || 0)} processed for ${creatorName}`
           }
           
           activities.push({

@@ -3,27 +3,25 @@ import { createClient } from '@/utils/supabase/client'
 export interface BookingWithDeadline {
   id: string
   status: string
-  scheduled_date: string | null
-  content_type: string | null
-  campaign_name?: string
-  creator_username?: string
+  deadline: string | null
+  campaign?: { name: string }
+  creator?: { name: string; handle?: string }
 }
 
 /**
- * Check if a booking is overdue based on its scheduled_date
+ * Check if a booking is overdue based on its deadline
  * Works with both regular Booking and BookingWithDeadline types
  */
 export function isBookingOverdue(booking: any): boolean {
-  // For regular Booking type, there's no scheduled_date field
-  // This would need to come from associated deliverables
-  if (!booking.scheduled_date) return false
+  // Check deadline field
+  if (!booking.deadline) return false
   
   // Don't mark as overdue if already completed or canceled
   if (['completed', 'canceled', 'approved'].includes(booking.status)) {
     return false
   }
   
-  const deadline = new Date(booking.scheduled_date)
+  const deadline = new Date(booking.deadline)
   const now = new Date()
   now.setHours(0, 0, 0, 0) // Set to start of day for fair comparison
   deadline.setHours(0, 0, 0, 0)
@@ -42,16 +40,16 @@ export function getBookingStatusColor(booking: any): string {
   switch (booking.status) {
     case 'pending':
       return 'secondary'
-    case 'in_process':
+    case 'deal':
       return 'default'
+    case 'delivered':
+      return 'secondary'
     case 'content_submitted':
       return 'outline'
     case 'approved':
       return 'success'
     case 'completed':
       return 'success'
-    case 'canceled':
-      return 'destructive'
     default:
       return 'default'
   }
@@ -75,7 +73,7 @@ export function getDaysUntilDeadline(booking: any): {
   isOverdue: boolean
   message: string
 } {
-  if (!booking.scheduled_date) {
+  if (!booking.deadline) {
     return {
       days: 0,
       isOverdue: false,
@@ -83,7 +81,7 @@ export function getDaysUntilDeadline(booking: any): {
     }
   }
   
-  const deadline = new Date(booking.scheduled_date)
+  const deadline = new Date(booking.deadline)
   const now = new Date()
   now.setHours(0, 0, 0, 0)
   deadline.setHours(0, 0, 0, 0)
@@ -125,11 +123,11 @@ export async function updateOverdueBookings() {
   try {
     const supabase = createClient()
     
-    // Fetch all bookings with scheduled_date
+    // Fetch all bookings with deadline
     const { data: bookings, error: fetchError } = await supabase
       .from('bookings')
-      .select('id, status, scheduled_date')
-      .not('scheduled_date', 'is', null)
+      .select('id, status, deadline')
+      .not('deadline', 'is', null)
       .not('status', 'in', '(completed,canceled,approved)')
     
     if (fetchError) {
@@ -147,7 +145,7 @@ export async function updateOverdueBookings() {
     
     const overdueBookingIds = bookings
       .filter(booking => {
-        const deadline = new Date(booking.scheduled_date)
+        const deadline = new Date(booking.deadline)
         deadline.setHours(0, 0, 0, 0)
         return deadline < now && !['completed', 'canceled', 'approved'].includes(booking.status)
       })

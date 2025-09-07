@@ -3,8 +3,6 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { AppShell } from '@/components/app-shell'
-import { EnhancedFileUpload } from '@/components/enhanced-file-upload'
-import { CreatorSubmissions } from '@/components/creator-submissions'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -27,7 +25,6 @@ import {
   getStatusLabel,
   getNextValidStatuses,
   calculateBookingProgress,
-  BookingDeliverable,
   BookingComment,
   BookingFile,
   BookingTimeline
@@ -74,22 +71,18 @@ export default function BookingDetailsPage() {
   const [activeTab, setActiveTab] = useState('overview')
   const [newComment, setNewComment] = useState('')
   const [isInternalNote, setIsInternalNote] = useState(false)
-  const [creatorSubmissions, setCreatorSubmissions] = useState<any[]>([])
+  const [trackingNumber, setTrackingNumber] = useState('')
 
   // Fetch booking data on component mount
   useEffect(() => {
     const fetchBooking = async () => {
       try {
         const { getBooking } = await import('@/lib/actions/bookings')
-        const { getDeliverablesByBooking } = await import('@/lib/actions/deliverables')
         
         const bookingData = await getBooking(params.id as string)
         
         if (bookingData) {
-          // Fetch deliverables for this booking
-          const deliverables = await getDeliverablesByBooking(params.id as string)
-          
-          // Merge with extended data
+          // Merge with extended data (simplified - no deliverables)
           const enhancedBooking = {
             ...bookingData,
             creator_name: bookingData.creator?.name || 'Unknown Creator',
@@ -98,15 +91,17 @@ export default function BookingDetailsPage() {
             campaign_name: bookingData.campaign?.name || 'Unknown Campaign',
             overall_progress: calculateBookingProgress({ status: bookingData.status }),
             
-            // Real data from database
-            deliverables: deliverables || [],
-            
             // Empty arrays for features not yet in database
             timeline: [],
             comments: [],
             files: []
           }
           setBooking(enhancedBooking)
+          
+          // Set tracking number if it exists
+          if (bookingData.tracking_number) {
+            setTrackingNumber(bookingData.tracking_number)
+          }
         } else {
           toast.error('Booking not found')
           router.push('/bookings')
@@ -190,125 +185,72 @@ export default function BookingDetailsPage() {
     toast.success('Comment added')
   }
 
-  // Handle creator submission
-  const handleCreatorSubmission = (submission: any) => {
-    setCreatorSubmissions(prev => [submission, ...prev])
-    
-    // Add to timeline
-    const timelineEntry = {
-      id: `t${Date.now()}`,
-      event_type: 'deliverable_submitted' as const,
-      event_description: `Content submitted via ${submission.source_type.replace('_', ' ')}`,
-      created_by: booking.creator_name,
-      created_at: new Date()
+  // Handle tracking number update
+  const handleUpdateTrackingNumber = async () => {
+    if (!trackingNumber.trim()) {
+      toast.error('Please enter a tracking number')
+      return
     }
-    
-    setBooking((prev: any) => ({
-      ...prev,
-      timeline: [timelineEntry, ...prev.timeline]
-    }))
-  }
 
-  // Handle submission review
-  const handleSubmissionReview = (submissionId: string, status: string, notes?: string) => {
-    setCreatorSubmissions(prev => 
-      prev.map(sub => 
-        sub.id === submissionId 
-          ? { ...sub, status, reviewed_by: 'Current User', reviewed_at: new Date(), staff_notes: notes }
-          : sub
-      )
-    )
-  }
-
-  // Handle file download
-  const handleFileDownload = (submissionId: string, fileId: string) => {
-    // Mark file as downloaded
-    setCreatorSubmissions(prev => 
-      prev.map(sub => 
-        sub.id === submissionId 
-          ? {
-              ...sub,
-              files: sub.files.map((file: any) => 
-                file.id === fileId 
-                  ? { ...file, downloaded: true, download_date: new Date() }
-                  : file
-              )
-            }
-          : sub
-      )
-    )
-  }
-
-  // Handle deliverable actions
-  const handleDeliverableApprove = (deliverableId: string) => {
-    setBooking((prev: any) => ({
-      ...prev,
-      deliverables: prev.deliverables.map((d: any) => 
-        d.id === deliverableId 
-          ? { ...d, status: 'approved', approved_at: new Date(), approved_by: 'Current User' }
-          : d
-      )
-    }))
-    toast.success('Deliverable approved')
-  }
-
-  const handleDeliverableRevision = (deliverableId: string) => {
-    const reason = prompt('Please provide revision notes:')
-    if (reason === null) return // User cancelled
-    
-    setBooking((prev: any) => ({
-      ...prev,
-      deliverables: prev.deliverables.map((d: any) => 
-        d.id === deliverableId 
-          ? { 
-              ...d, 
-              status: 'revision_requested', 
-              revision_count: d.revision_count + 1,
-              notes: reason 
-            }
-          : d
-      )
-    }))
-    toast.success('Revision requested')
-  }
-
-  const handleDeliverableStart = (deliverableId: string) => {
-    setBooking((prev: any) => ({
-      ...prev,
-      deliverables: prev.deliverables.map((d: any) => 
-        d.id === deliverableId 
-          ? { ...d, status: 'in_progress' }
-          : d
-      )
-    }))
-    toast.success('Deliverable started')
-  }
-
-  // Handle deliverable deletion
-  const handleDeliverableDelete = async (deliverableId: string) => {
     try {
-      if (confirm('Are you sure you want to delete this deliverable? This action cannot be undone.')) {
-        // If we have real deliverables from database, delete via API
-        if (booking.deliverables.find((d: any) => d.id === deliverableId && !d.id.startsWith('d'))) {
-          const { deleteDeliverable } = await import('@/lib/actions/deliverables')
-          await deleteDeliverable(deliverableId)
-          toast.success('Deliverable deleted successfully')
-        } else {
-          // For mock data, just remove from state
-          toast.success('Deliverable removed')
-        }
-        
-        // Remove from local state
-        setBooking((prev: any) => ({
-          ...prev,
-          deliverables: prev.deliverables.filter((d: any) => d.id !== deliverableId)
-        }))
-      }
+      const { updateBookingTrackingNumber } = await import('@/lib/actions/calendar')
+      await updateBookingTrackingNumber(booking.id, trackingNumber)
+      
+      // Update local state
+      setBooking((prev: any) => ({
+        ...prev,
+        tracking_number: trackingNumber,
+        status: 'delivered',
+        delivered_at: new Date().toISOString(),
+        overall_progress: calculateBookingProgress({ status: 'delivered' })
+      }))
+      
+      toast.success('Tracking number updated and status set to delivered')
     } catch (error) {
-      console.error('Failed to delete deliverable:', error)
-      toast.error('Failed to delete deliverable')
+      console.error('Failed to update tracking number:', error)
+      toast.error('Failed to update tracking number')
     }
   }
+
+  // Handle delivery confirmation (delivered -> content_submitted)
+  const handleDeliveredConfirmation = async () => {
+    try {
+      const { updateBookingStatus } = await import('@/lib/actions/bookings')
+      await updateBookingStatus(booking.id, 'content_submitted')
+      
+      setBooking((prev: any) => ({
+        ...prev,
+        status: 'content_submitted',
+        overall_progress: calculateBookingProgress({ status: 'content_submitted' })
+      }))
+      
+      toast.success('Package confirmed received, awaiting content submission')
+    } catch (error) {
+      console.error('Failed to confirm delivery:', error)
+      toast.error('Failed to confirm delivery')
+    }
+  }
+
+  // Handle confirm deal (pending -> deal)
+  const handleConfirmDeal = async () => {
+    try {
+      const { updateBookingStatus } = await import('@/lib/actions/bookings')
+      await updateBookingStatus(booking.id, 'deal')
+      
+      setBooking((prev: any) => ({
+        ...prev,
+        status: 'deal',
+        overall_progress: calculateBookingProgress({ status: 'deal' })
+      }))
+      
+      toast.success('Deal confirmed! Ready to prepare delivery')
+    } catch (error) {
+      console.error('Failed to confirm deal:', error)
+      toast.error('Failed to confirm deal')
+    }
+  }
+
+  // Deliverable handlers removed - simplified to booking-only workflow
 
   // Handle booking file download
   const handleBookingFileDownload = (fileId: string, fileName: string) => {
@@ -395,14 +337,26 @@ export default function BookingDetailsPage() {
   const handleDelete = async () => {
     try {
       if (confirm('Are you sure you want to delete this booking? This action cannot be undone.')) {
-        toast.loading('Deleting booking...')
+        const loadingToast = toast.loading('Deleting booking...')
+        
         const { deleteBooking } = await import('@/lib/actions/bookings')
-        await deleteBooking(booking.id)
+        const result = await deleteBooking(booking.id)
+        
+        console.log('✅ Booking deleted successfully:', result)
+        toast.dismiss(loadingToast)
         toast.success('Booking deleted successfully')
+        
+        // Navigate back to bookings page
         router.push('/bookings')
+        
+        // Force a page refresh after navigation to ensure clean state
+        setTimeout(() => {
+          window.location.reload()
+        }, 100)
       }
     } catch (error) {
-      toast.error('Failed to delete booking')
+      console.error('❌ Error deleting booking:', error)
+      toast.error(`Failed to delete booking: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
 
@@ -573,25 +527,13 @@ export default function BookingDetailsPage() {
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="mb-6">
             <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="deliverables">
-              Deliverables 
-              <Badge variant="secondary" className="ml-2">
-                {booking.deliverables.length}
-              </Badge>
-            </TabsTrigger>
-            <TabsTrigger value="timeline">Timeline</TabsTrigger>
-            <TabsTrigger value="files">
-              Files
-              <Badge variant="secondary" className="ml-2">
-                {booking.files.length}
-              </Badge>
+            <TabsTrigger value="tracking">
+              Delivery & Tracking
             </TabsTrigger>
             <TabsTrigger value="submissions">
               Creator Submissions
-              <Badge variant="secondary" className="ml-2">
-                {creatorSubmissions.length}
-              </Badge>
             </TabsTrigger>
+            <TabsTrigger value="timeline">Timeline</TabsTrigger>
             <TabsTrigger value="comments">
               Comments
               <Badge variant="secondary" className="ml-2">
@@ -616,20 +558,34 @@ export default function BookingDetailsPage() {
                         {new Date(booking.created_at).toLocaleDateString()}
                       </p>
                     </div>
-                    <div>
-                      <p className="text-sm text-gray-500">Deadline</p>
-                      <p className="font-medium">
-                        {booking.deadline ? new Date(booking.deadline).toLocaleDateString() : 'Not set'}
-                      </p>
-                    </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Deadline</p>
+                    <p className="font-medium">
+                      {booking.deadline ? new Date(booking.deadline).toLocaleDateString() : 'Not set'}
+                    </p>
+                  </div>
                     <div>
                       <p className="text-sm text-gray-500">Campaign</p>
                       <p className="font-medium">{booking.campaign_name}</p>
                     </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Creator</p>
+                    <p className="font-medium">{booking.creator_name}</p>
+                  </div>
+                  {booking.status === 'delivered' && booking.tracking_number && (
                     <div>
-                      <p className="text-sm text-gray-500">Creator</p>
-                      <p className="font-medium">{booking.creator_name}</p>
+                      <p className="text-sm text-gray-500">Tracking Number</p>
+                      <p className="font-medium">{booking.tracking_number}</p>
                     </div>
+                  )}
+                  {booking.delivered_at && (
+                    <div>
+                      <p className="text-sm text-gray-500">Delivered At</p>
+                      <p className="font-medium">
+                        {new Date(booking.delivered_at).toLocaleString()}
+                      </p>
+                    </div>
+                  )}
                   </div>
                 </CardContent>
               </Card>
@@ -641,21 +597,11 @@ export default function BookingDetailsPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
-                    <p className="text-sm text-gray-500">Deliverables</p>
+                    <p className="text-sm text-gray-500">Status</p>
                     <div className="flex items-center gap-2 mt-1">
-                      <Progress 
-                        value={
-                          (booking.deliverables.filter((d: any) => 
-                            d.status === 'approved' || d.status === 'published'
-                          ).length / booking.deliverables.length) * 100
-                        } 
-                        className="h-2 flex-1" 
-                      />
-                      <span className="text-sm font-medium">
-                        {booking.deliverables.filter((d: any) => 
-                          d.status === 'approved' || d.status === 'published'
-                        ).length}/{booking.deliverables.length}
-                      </span>
+                      <Badge variant={getStatusBadgeVariant(booking.status as BookingStatus)}>
+                        {getStatusLabel(booking.status)}
+                      </Badge>
                     </div>
                   </div>
                   <div>
@@ -665,9 +611,14 @@ export default function BookingDetailsPage() {
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Total Revisions</p>
+                    <p className="text-sm text-gray-500">Amount</p>
                     <p className="text-2xl font-bold">
-                      {booking.deliverables.reduce((sum: number, d: any) => sum + d.revision_count, 0)}
+                      {booking.agreed_amount ? 
+                        `${booking.agreed_amount.toLocaleString()} ${booking.currency}` : 
+                        booking.offer_amount ? 
+                        `${booking.offer_amount.toLocaleString()} ${booking.currency}` : 
+                        'Not set'
+                      }
                     </p>
                   </div>
                 </CardContent>
@@ -675,127 +626,112 @@ export default function BookingDetailsPage() {
             </div>
           </TabsContent>
 
-          {/* Deliverables Tab */}
-          <TabsContent value="deliverables">
-            <div className="space-y-4">
-              {/* Add Deliverable Button */}
-              <div className="flex justify-end mb-4">
-                <Button
-                  onClick={() => toast.info('Add deliverable functionality would be implemented here')}
-                  size="sm"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Deliverable
-                </Button>
-              </div>
-              
-              {/* Show deliverables or empty state */}
-              {booking.deliverables.length === 0 ? (
-                <Card>
-                  <CardContent className="py-12">
-                    <div className="text-center">
-                      <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">
-                        No deliverables yet
-                      </h3>
-                      <p className="text-gray-500 mb-4">
-                        Add deliverables to track content creation progress
-                      </p>
-                      <Button
-                        onClick={() => toast.info('Add deliverable functionality would be implemented here')}
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add First Deliverable
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ) : (
-                booking.deliverables.map((deliverable: any) => (
-                <Card key={deliverable.id}>
-                  <CardContent className="pt-6">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h3 className="font-semibold">{deliverable.description}</h3>
-                          <Badge variant={
-                            deliverable.status === 'approved' ? 'default' :
-                            deliverable.status === 'submitted' ? 'secondary' :
-                            deliverable.status === 'in_process' ? 'outline' :
-                            'secondary'
-                          }>
-                            {deliverable.status.replace('_', ' ')}
-                          </Badge>
+          {/* Tracking Tab */}
+          <TabsContent value="tracking">
+            <div className="space-y-6">
+              {/* Delivery Status */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Delivery & Tracking</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {booking.status === 'pending' ? (
+                    <div className="space-y-4">
+                      <div className="text-center py-8">
+                        <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <Clock className="h-8 w-8 text-yellow-600" />
                         </div>
-                        <p className="text-sm text-gray-600 mb-3">
-                          {deliverable.requirements}
-                        </p>
-                        <div className="flex items-center gap-4 text-sm text-gray-500">
-                          <span className="flex items-center gap-1">
-                            <Calendar className="h-4 w-4" />
-                            Due: {deliverable.deadline ? new Date(deliverable.deadline).toLocaleDateString() : 'Not set'}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <RefreshCw className="h-4 w-4" />
-                            {deliverable.revision_count} revisions
-                          </span>
-                          {deliverable.submission_url && (
-                            <a 
-                              href={deliverable.submission_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex items-center gap-1 text-blue-600 hover:text-blue-800"
-                            >
-                              <Link className="h-4 w-4" />
-                              View submission
-                            </a>
-                          )}
-                        </div>
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">Confirm Deal</h3>
+                        <p className="text-gray-500 mb-6">Confirm booking details and proceed to delivery preparation</p>
                       </div>
-                      <div className="flex items-center gap-2">
-                        {deliverable.status === 'submitted' && (
-                          <>
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => handleDeliverableRevision(deliverable.id)}
-                            >
-                              Request Revision
-                            </Button>
-                            <Button 
-                              size="sm"
-                              onClick={() => handleDeliverableApprove(deliverable.id)}
-                            >
-                              Approve
-                            </Button>
-                          </>
-                        )}
-                        {deliverable.status === 'not_started' && (
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => handleDeliverableStart(deliverable.id)}
-                          >
-                            <PlayCircle className="h-4 w-4 mr-2" />
-                            Start
-                          </Button>
-                        )}
-                        
-                        {/* Delete button for all deliverables */}
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleDeliverableDelete(deliverable.id)}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                        >
-                          <Trash2 className="h-4 w-4" />
+                      
+                      <div className="flex justify-center">
+                        <Button onClick={handleConfirmDeal}>
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                          Confirm Deal
                         </Button>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-                ))
-              )}
+                  ) : booking.status === 'deal' ? (
+                    <div className="space-y-4">
+                      <div className="text-center py-8">
+                        <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <Send className="h-8 w-8 text-blue-600" />
+                        </div>
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">Prepare Delivery</h3>
+                        <p className="text-gray-500 mb-6">Add tracking number when goods are shipped to creator</p>
+                      </div>
+                      
+                      <div className="max-w-md mx-auto space-y-3">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Tracking Number
+                          </label>
+                          <input
+                            type="text"
+                            value={trackingNumber}
+                            onChange={(e) => setTrackingNumber(e.target.value)}
+                            placeholder="Enter tracking number"
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                        </div>
+                        
+                        <Button 
+                          onClick={handleUpdateTrackingNumber}
+                          disabled={!trackingNumber.trim()}
+                          className="w-full"
+                        >
+                          <Send className="h-4 w-4 mr-2" />
+                          Mark as Delivered
+                        </Button>
+                      </div>
+                    </div>
+                  ) : booking.status === 'delivered' ? (
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                        <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                        <div>
+                          <p className="font-medium text-orange-800">Package Delivered</p>
+                          <p className="text-sm text-orange-600">Awaiting creator confirmation</p>
+                        </div>
+                      </div>
+                      
+                      {booking.tracking_number && (
+                        <div>
+                          <p className="text-sm font-medium text-gray-700 mb-1">Tracking Number</p>
+                          <p className="text-lg font-mono bg-gray-50 p-2 rounded border">{booking.tracking_number}</p>
+                        </div>
+                      )}
+                      
+                      {booking.delivered_at && (
+                        <div>
+                          <p className="text-sm font-medium text-gray-700 mb-1">Delivered At</p>
+                          <p className="text-gray-900">{new Date(booking.delivered_at).toLocaleString()}</p>
+                        </div>
+                      )}
+                      
+                      <div className="flex gap-2">
+                        <Button onClick={handleDeliveredConfirmation}>
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                          Confirm Received
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <CheckCircle className="h-8 w-8 text-gray-400" />
+                      </div>
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">Delivery Complete</h3>
+                      <p className="text-gray-500">
+                        {booking.status === 'content_submitted' && 'Package delivered, awaiting content submission'}
+                        {booking.status === 'approved' && 'Content approved, ready for completion'}
+                        {booking.status === 'completed' && 'Booking completed successfully'}
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             </div>
           </TabsContent>
 
@@ -829,67 +765,72 @@ export default function BookingDetailsPage() {
             </Card>
           </TabsContent>
 
-          {/* Files Tab */}
-          <TabsContent value="files">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle>Files & Attachments</CardTitle>
-                  <Button 
-                    size="sm"
-                    onClick={handleFileUpload}
-                  >
-                    <Upload className="h-4 w-4 mr-2" />
-                    Upload File
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {booking.files.map((file: any) => (
-                    <div key={file.id} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <FileText className="h-8 w-8 text-gray-400" />
-                        <div>
-                          <p className="font-medium">{file.file_name}</p>
-                          <p className="text-sm text-gray-500">
-                            {(file.file_size / 1000000).toFixed(1)} MB • Uploaded by {file.uploaded_by}
-                          </p>
-                        </div>
-                      </div>
-                      <Button 
-                        size="sm" 
-                        variant="ghost"
-                        onClick={() => handleBookingFileDownload(file.id, file.file_name)}
-                      >
-                        <Download className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
           {/* Creator Submissions Tab */}
           <TabsContent value="submissions">
             <div className="space-y-6">
-              {/* Add New Submission */}
-              <EnhancedFileUpload
-                bookingId={booking.id}
-                creatorName={booking.creator_name}
-                deliverables={booking.deliverables}
-                onSubmissionAdded={handleCreatorSubmission}
-              />
-              
-              {/* Existing Submissions */}
-              <CreatorSubmissions
-                submissions={creatorSubmissions}
-                creatorName={booking.creator_name}
-                creatorAvatar={booking.creator_avatar}
-                onSubmissionReview={handleSubmissionReview}
-                onFileDownload={handleFileDownload}
-              />
+              {/* Submission Status */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Content Submissions</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {booking.status === 'content_submitted' ? (
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2 p-4 bg-purple-50 border border-purple-200 rounded-lg">
+                        <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                        <div>
+                          <p className="font-medium text-purple-800">Content Submitted</p>
+                          <p className="text-sm text-purple-600">Awaiting review and approval</p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex gap-2">
+                        <Button variant="outline" onClick={() => toast.info('Request revision functionality')}>Request Revision</Button>
+                        <Button onClick={() => {
+                          handleStatusChange('approved')
+                          toast.success('Content approved!')
+                        }}>
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                          Approve Content
+                        </Button>
+                      </div>
+                    </div>
+                  ) : booking.status === 'approved' ? (
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2 p-4 bg-green-50 border border-green-200 rounded-lg">
+                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                        <div>
+                          <p className="font-medium text-green-800">Content Approved</p>
+                          <p className="text-sm text-green-600">Ready for completion</p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex gap-2">
+                        <Button onClick={() => {
+                          handleStatusChange('completed')
+                          toast.success('Booking completed!')
+                        }}>
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                          Mark as Completed
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Upload className="h-8 w-8 text-gray-400" />
+                      </div>
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">Awaiting Content Submission</h3>
+                      <p className="text-gray-500">
+                        {booking.status === 'pending' && 'Confirm deal first before content submission'}
+                        {booking.status === 'deal' && 'Deliver goods first before content submission'}
+                        {booking.status === 'delivered' && 'Creator will submit content once they receive the goods'}
+                        {booking.status === 'completed' && 'Booking has been completed'}
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             </div>
           </TabsContent>
 

@@ -339,7 +339,6 @@ export default function PaymentsPage() {
                     <TableHead>Campaign</TableHead>
                     <TableHead>Amount</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Method</TableHead>
                     <TableHead>Due Date</TableHead>
                     <TableHead>Paid Date</TableHead>
                     <TableHead>Actions</TableHead>
@@ -366,9 +365,6 @@ export default function PaymentsPage() {
                               {payment.status.replace('_', ' ')}
                             </Badge>
                           </div>
-                        </TableCell>
-                        <TableCell className="capitalize">
-                          {payment.payment_method || '-'}
                         </TableCell>
                         <TableCell>
                           {payment.due_date ? formatDate(new Date(payment.due_date)) : '-'}

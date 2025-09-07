@@ -163,7 +163,6 @@ export function PaymentEditDialog({ payment, trigger, onUpdate }: PaymentEditDia
   const [formData, setFormData] = useState({
     amount: payment.amount || 0,
     status: payment.status,
-    payment_method: payment.payment_method || '',
     due_date: payment.due_date || '',
     notes: payment.notes || '',
     transaction_id: payment.transaction_id || ''
@@ -174,7 +173,10 @@ export function PaymentEditDialog({ payment, trigger, onUpdate }: PaymentEditDia
     setLoading(true)
 
     try {
-      await updatePayment(payment.id, formData)
+      await updatePayment(payment.id, {
+        ...formData,
+        payment_method: 'bank'
+      })
       toast.success('Payment updated successfully')
       onUpdate?.()
       setOpen(false)
@@ -215,27 +217,17 @@ export function PaymentEditDialog({ payment, trigger, onUpdate }: PaymentEditDia
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="amount">Amount</Label>
-              <Input
-                id="amount"
-                type="number"
-                step="0.01"
-                value={formData.amount}
-                onChange={(e) => setFormData({ ...formData, amount: parseFloat(e.target.value) || 0 })}
-                required
-              />
-            </div>
-            <div>
-              <Label htmlFor="payment_method">Payment Method</Label>
-              <Input
-                id="payment_method"
-                value={formData.payment_method}
-                onChange={(e) => setFormData({ ...formData, payment_method: e.target.value })}
-                placeholder="e.g., Bank Transfer, PayPal"
-              />
-            </div>
+          <div>
+            <Label htmlFor="amount">Amount</Label>
+            <Input
+              id="amount"
+              type="number"
+              step="0.01"
+              value={formData.amount}
+              onChange={(e) => setFormData({ ...formData, amount: parseFloat(e.target.value) || 0 })}
+              required
+            />
+            <p className="text-xs text-gray-500 mt-1">Payment processed via bank transfer</p>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -336,7 +328,6 @@ export function PaymentCreateDialog({ trigger, onSuccess }: PaymentCreateDialogP
     booking_id: '',
     amount: 0,
     status: 'unconfirmed' as PaymentStatus,
-    payment_method: '',
     due_date: '',
     notes: '',
     transaction_id: ''
@@ -357,6 +348,26 @@ export function PaymentCreateDialog({ trigger, onSuccess }: PaymentCreateDialogP
     }
   }, [open])
 
+  // Handle booking selection and auto-fill amount
+  const handleBookingSelect = (bookingId: string) => {
+    const selectedBooking = bookings.find(b => b.id === bookingId)
+    if (selectedBooking) {
+      // Priority: creator rate -> agreed amount -> offer amount -> 0
+      const creatorRate = selectedBooking.creator?.rate_card 
+        ? Object.values(selectedBooking.creator.rate_card)[0] as number 
+        : null
+      const amount = creatorRate || selectedBooking.agreed_amount || selectedBooking.offer_amount || 0
+      
+      setFormData({ 
+        ...formData, 
+        booking_id: bookingId, 
+        amount: amount 
+      })
+    } else {
+      setFormData({ ...formData, booking_id: bookingId })
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!formData.booking_id || !formData.amount) {
@@ -370,7 +381,7 @@ export function PaymentCreateDialog({ trigger, onSuccess }: PaymentCreateDialogP
         booking_id: formData.booking_id,
         amount: formData.amount,
         status: formData.status,
-        payment_method: formData.payment_method || null,
+        payment_method: 'bank',
         due_date: formData.due_date || null,
         notes: formData.notes || null,
         transaction_id: formData.transaction_id || null,
@@ -384,7 +395,6 @@ export function PaymentCreateDialog({ trigger, onSuccess }: PaymentCreateDialogP
         booking_id: '',
         amount: 0,
         status: 'unconfirmed',
-        payment_method: '',
         due_date: '',
         notes: '',
         transaction_id: ''
@@ -422,44 +432,50 @@ export function PaymentCreateDialog({ trigger, onSuccess }: PaymentCreateDialogP
             <Label htmlFor="booking_id">Booking *</Label>
             <Select
               value={formData.booking_id}
-              onValueChange={(value) => setFormData({ ...formData, booking_id: value })}
+              onValueChange={handleBookingSelect}
               required
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select a booking" />
               </SelectTrigger>
               <SelectContent>
-                {bookings.map((booking) => (
-                  <SelectItem key={booking.id} value={booking.id}>
-                    {booking.creator?.name || 'Unknown'} - {booking.campaign?.name || 'Unknown'} 
-                    ({formatCurrency(booking.agreed_amount || booking.offer_amount || 0)})
-                  </SelectItem>
-                ))}
+                {bookings.map((booking) => {
+                  const creatorRate = booking.creator?.rate_card 
+                    ? Object.values(booking.creator.rate_card)[0] as number 
+                    : null
+                  const amount = creatorRate || booking.agreed_amount || booking.offer_amount || 0
+                  
+                  return (
+                    <SelectItem key={booking.id} value={booking.id}>
+                      {booking.creator?.name || 'Unknown'} - {booking.campaign?.name || 'Unknown'} 
+                      ({formatCurrency(amount)}
+                      {creatorRate && <span className="text-xs text-gray-500 ml-1">• from creator rate</span>})
+                    </SelectItem>
+                  )
+                })}
               </SelectContent>
             </Select>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="amount">Amount *</Label>
-              <Input
-                id="amount"
-                type="number"
-                step="0.01"
-                value={formData.amount}
-                onChange={(e) => setFormData({ ...formData, amount: parseFloat(e.target.value) || 0 })}
-                required
-              />
-            </div>
-            <div>
-              <Label htmlFor="payment_method">Payment Method</Label>
-              <Input
-                id="payment_method"
-                value={formData.payment_method}
-                onChange={(e) => setFormData({ ...formData, payment_method: e.target.value })}
-                placeholder="e.g., Bank Transfer, PayPal"
-              />
-            </div>
+          <div>
+            <Label htmlFor="amount">Amount *</Label>
+            <Input
+              id="amount"
+              type="number"
+              step="0.01"
+              value={formData.amount}
+              onChange={(e) => setFormData({ ...formData, amount: parseFloat(e.target.value) || 0 })}
+              required
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              {formData.booking_id && (() => {
+                const selectedBooking = bookings.find(b => b.id === formData.booking_id)
+                const hasCreatorRate = selectedBooking?.creator?.rate_card && Object.keys(selectedBooking.creator.rate_card).length > 0
+                return hasCreatorRate 
+                  ? 'Amount auto-filled from creator\'s rate • Payment via bank transfer'
+                  : 'Payment will be processed via bank transfer'
+              })() || 'Payment will be processed via bank transfer'}
+            </p>
           </div>
 
           <div className="grid grid-cols-2 gap-4">

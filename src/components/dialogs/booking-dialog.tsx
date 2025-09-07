@@ -72,16 +72,12 @@ export function BookingDialog({
               campaign_id: booking.campaign_id || 'none',
               creator_id: booking.creator_id || 'none',
               status: booking.status,
-              offer_amount: booking.offer_amount || undefined,
-              agreed_amount: booking.agreed_amount || undefined,
               currency: booking.currency,
               contract_url: booking.contract_url || '',
-              brief: booking.brief || '',
               contact_channel: booking.contact_channel || undefined,
               utm_code: booking.utm_code || '',
               affiliate_code: booking.affiliate_code || '',
-              scheduled_date: (booking as any).scheduled_date || '',
-              content_type: (booking as any).content_type || '',
+              deadline: booking.deadline || '',
             } : undefined}
             prefilledCampaignId={prefilledCampaignId}
             prefilledCreatorId={prefilledCreatorId}

@@ -134,7 +134,7 @@ export default function CreatorsPage() {
     const csvData = filteredCreators.map(creator => ({
       Name: creator.name,
       Handle: creator.handle || '',
-      Email: creator.email || '',
+      Address: creator.address || '',
       Platform: creator.platform || '',
       Followers: creator.followers || 0,
       'Engagement Rate': creator.avg_likes || 0,
@@ -395,7 +395,7 @@ export default function CreatorsPage() {
                       </TableCell>
                       <TableCell>
                         <div className="text-sm">
-                          {creator.email && <div>📧 {creator.email}</div>}
+                          {creator.address && <div>📍 {creator.address}</div>}
                           {creator.phone && <div>📱 {creator.phone}</div>}
                         </div>
                       </TableCell>
@@ -560,9 +560,9 @@ export default function CreatorsPage() {
 
                   {/* Contact Info */}
                   <div className="space-y-2">
-                    {creator.email && (
+                    {creator.address && (
                       <div className="text-sm text-gray-600">
-                        📧 {creator.email}
+                        📍 {creator.address}
                       </div>
                     )}
                     {creator.phone && (

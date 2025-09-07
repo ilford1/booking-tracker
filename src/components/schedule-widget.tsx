@@ -136,37 +136,64 @@ export function ScheduleWidget({ className, campaignFilter }: ScheduleWidgetProp
         // Transform data into schedule items
         const items: ScheduleItem[] = []
         
-        // Add bookings
+        // Add bookings (focus on deadlines, not creation dates)
         if (bookings) {
           bookings.forEach((booking: any) => {
-            // Determine booking status
-            const isCompleted = booking.status === 'completed'
-            const isOverdue = ['pending', 'in_process'].includes(booking.status) && 
-                              new Date(booking.created_at).getTime() < (now.getTime() - 7 * 24 * 60 * 60 * 1000)
-            
             // Determine priority based on agreed_amount or offer_amount
             const amount = booking.agreed_amount || booking.offer_amount || 0
             let priority: 'high' | 'medium' | 'low' = 'low'
             if (amount > 5000000) priority = 'high'
             else if (amount > 1000000) priority = 'medium'
             
-            items.push({
-              id: booking.id,
-              type: 'booking',
-              title: booking.campaign?.name || booking.brief || 'New Booking',
-              campaign: booking.campaign?.name || undefined,
-              creator: booking.creator?.name || booking.creator?.handle || undefined,
-              time: booking.created_at,
-              status: isCompleted ? 'completed' : isOverdue ? 'overdue' : 'upcoming',
-              priority
-            })
+            // Add booking creation event (for recently created bookings)
+            const bookingDate = new Date(booking.created_at)
+            const daysSinceCreated = Math.ceil((now.getTime() - bookingDate.getTime()) / (1000 * 60 * 60 * 24))
             
-            // Add payment deadline for approved bookings
-            if (booking.status === 'approved' || booking.status === 'completed') {
+            if (daysSinceCreated <= 3) { // Show recently created bookings (last 3 days)
+              const isCompleted = booking.status === 'completed'
+              
+              items.push({
+                id: booking.id,
+                type: 'booking',
+                title: `New: ${booking.campaign?.name || 'Booking Created'}`,
+                campaign: booking.campaign?.name || undefined,
+                creator: booking.creator?.name || booking.creator?.handle || undefined,
+                time: booking.created_at,
+                status: isCompleted ? 'completed' : 'upcoming',
+                priority
+              })
+            }
+            
+            // Add deadline event (most important for scheduling)
+            if (booking.deadline) {
+              const deadlineDate = new Date(booking.deadline)
+              const daysUntilDeadline = Math.ceil((deadlineDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+              
+              // Show deadlines within next 14 days or overdue deadlines
+              if (daysUntilDeadline >= -3 && daysUntilDeadline <= 14) {
+                const isCompleted = booking.status === 'completed'
+                const isOverdue = deadlineDate < now && !isCompleted
+                
+                items.push({
+                  id: `${booking.id}-deadline`,
+                  type: 'deadline',
+                  title: `Deadline: ${booking.campaign?.name || 'Content Due'}`,
+                  campaign: booking.campaign?.name || undefined,
+                  creator: booking.creator?.name || booking.creator?.handle || undefined,
+                  time: booking.deadline,
+                  status: isCompleted ? 'completed' : isOverdue ? 'overdue' : 'upcoming',
+                  priority
+                })
+              }
+            }
+            
+            // Add payment deadline for approved/completed bookings
+            if (['approved', 'completed'].includes(booking.status) && booking.agreed_amount) {
               const paymentDate = new Date(booking.updated_at)
               paymentDate.setDate(paymentDate.getDate() + 7) // 7 days after approval
               
-              if (paymentDate <= next7Days) {
+              const daysUntilPayment = Math.ceil((paymentDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+              if (daysUntilPayment >= -1 && daysUntilPayment <= 7) {
                 const isPaymentOverdue = paymentDate < now && booking.status !== 'completed'
                 
                 items.push({
@@ -239,6 +266,31 @@ export function ScheduleWidget({ className, campaignFilter }: ScheduleWidgetProp
           .slice(0, 8) // Show up to 8 items
         
         setScheduleItems(sortedItems)
+        
+        // Debug logging
+        console.log('Schedule Widget Debug:', {
+          bookingsCount: bookings?.length || 0,
+          campaignsCount: campaigns?.length || 0,
+          totalItemsGenerated: items.length,
+          relevantItemsCount: relevantItems.length,
+          finalItemsCount: sortedItems.length,
+          todayCount: sortedItems.filter(item => {
+            const itemDate = new Date(item.time)
+            return itemDate.toDateString() === now.toDateString()
+          }).length,
+          tomorrowCount: sortedItems.filter(item => {
+            const tomorrow = new Date()
+            tomorrow.setDate(tomorrow.getDate() + 1)
+            const itemDate = new Date(item.time)
+            return itemDate.toDateString() === tomorrow.toDateString()
+          }).length,
+          items: sortedItems.map(item => ({
+            type: item.type,
+            title: item.title,
+            time: item.time,
+            status: item.status
+          }))
+        })
       } catch (error) {
         console.error('Error loading schedule:', error)
         setScheduleItems([])
@@ -254,35 +306,27 @@ export function ScheduleWidget({ className, campaignFilter }: ScheduleWidgetProp
     return () => clearInterval(interval)
   }, [campaignFilter])
 
-  const todayItems = scheduleItems.filter(item => {
-    const today = new Date()
-    const itemDate = new Date(item.time)
-    return itemDate.toDateString() === today.toDateString()
-  })
-
-  const tomorrowItems = scheduleItems.filter(item => {
-    const tomorrow = new Date()
-    tomorrow.setDate(tomorrow.getDate() + 1)
-    const itemDate = new Date(item.time)
-    return itemDate.toDateString() === tomorrow.toDateString()
-  })
+  // Group items by day for the next 7 days
+  const today = new Date()
+  const next7Days = []
   
-  const recentItems = scheduleItems.filter(item => {
-    const today = new Date()
-    const tomorrow = new Date()
-    tomorrow.setDate(tomorrow.getDate() + 1)
-    const itemDate = new Date(item.time)
-    return itemDate.toDateString() !== today.toDateString() && 
-           itemDate.toDateString() !== tomorrow.toDateString() &&
-           itemDate.getTime() < tomorrow.getTime()
-  })
-  
-  const upcomingItems = scheduleItems.filter(item => {
-    const tomorrow = new Date()
-    tomorrow.setDate(tomorrow.getDate() + 1)
-    const itemDate = new Date(item.time)
-    return itemDate.getTime() > tomorrow.getTime()
-  })
+  for (let i = 0; i < 7; i++) {
+    const date = new Date()
+    date.setDate(today.getDate() + i)
+    
+    const dayItems = scheduleItems.filter(item => {
+      const itemDate = new Date(item.time)
+      return itemDate.toDateString() === date.toDateString()
+    })
+    
+    if (dayItems.length > 0 || i === 0) { // Always show today even if empty
+      next7Days.push({
+        date,
+        label: i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
+        items: dayItems
+      })
+    }
+  }
 
   if (loading) {
     return (
@@ -316,103 +360,70 @@ export function ScheduleWidget({ className, campaignFilter }: ScheduleWidgetProp
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Today */}
-        {todayItems.length > 0 && (
-          <div>
-            <h4 className="text-sm font-medium text-gray-700 mb-2">Today</h4>
+        {/* Show schedule for next 7 days */}
+        {next7Days.map((day, dayIndex) => (
+          <div key={day.date.toDateString()}>
+            <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+              {day.label}
+              {day.items.length > 0 && (
+                <Badge variant="outline" className="text-xs">
+                  {day.items.length}
+                </Badge>
+              )}
+            </h4>
             <div className="space-y-2">
-              {todayItems.map((item) => {
-                const Icon = getTypeIcon(item.type)
-                return (
-                  <div key={item.id} className="flex items-start gap-3 p-2 bg-gray-50 rounded-lg">
-                    <div className="mt-0.5">
-                      <Icon className="h-4 w-4 text-gray-600" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <p className="text-sm font-medium truncate">{item.title}</p>
-                        <Badge variant="secondary" className={`text-xs ${getStatusColor(item.status)}`}>
-                          {item.status}
-                        </Badge>
+              {day.items.length > 0 ? (
+                day.items.map((item) => {
+                  const Icon = getTypeIcon(item.type)
+                  return (
+                    <div key={item.id} className="flex items-start gap-3 p-2 bg-gray-50 rounded-lg">
+                      <div className="mt-0.5">
+                        <Icon className="h-4 w-4 text-gray-600" />
                       </div>
-                      <div className="space-y-1">
-                        {item.campaign && (
-                          <p className="text-xs text-gray-600">{item.campaign}</p>
-                        )}
-                        {item.creator && (
-                          <p className="text-xs text-gray-600">{item.creator}</p>
-                        )}
-                        <div className="flex items-center justify-between">
-                          <p className="text-xs text-gray-500">
-                            {new Date(item.time).toLocaleTimeString('en-US', {
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
-                          </p>
-                          <Badge variant="outline" className={`text-xs ${getPriorityColor(item.priority)}`}>
-                            {item.priority}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="text-sm font-medium truncate">{item.title}</p>
+                          <Badge variant="secondary" className={`text-xs ${getStatusColor(item.status)}`}>
+                            {item.status}
                           </Badge>
+                        </div>
+                        <div className="space-y-1">
+                          {item.campaign && (
+                            <p className="text-xs text-gray-600">{item.campaign}</p>
+                          )}
+                          {item.creator && (
+                            <p className="text-xs text-gray-600">{item.creator}</p>
+                          )}
+                          <div className="flex items-center justify-between">
+                            <p className="text-xs text-gray-500">
+                              {new Date(item.time).toLocaleTimeString('en-US', {
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </p>
+                            <Badge variant="outline" className={`text-xs ${getPriorityColor(item.priority)}`}>
+                              {item.priority}
+                            </Badge>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
+                  )
+                })
+              ) : (
+                dayIndex === 0 && ( // Only show "No events" for today
+                  <p className="text-xs text-gray-500 pl-2">No events scheduled</p>
                 )
-              })}
+              )}
             </div>
           </div>
-        )}
+        ))}
 
-        {/* Tomorrow */}
-        {tomorrowItems.length > 0 && (
-          <div>
-            <h4 className="text-sm font-medium text-gray-700 mb-2">Tomorrow</h4>
-            <div className="space-y-2">
-              {tomorrowItems.map((item) => {
-                const Icon = getTypeIcon(item.type)
-                return (
-                  <div key={item.id} className="flex items-start gap-3 p-2 bg-gray-50 rounded-lg">
-                    <div className="mt-0.5">
-                      <Icon className="h-4 w-4 text-gray-600" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <p className="text-sm font-medium truncate">{item.title}</p>
-                        <Badge variant="secondary" className={`text-xs ${getStatusColor(item.status)}`}>
-                          {item.status}
-                        </Badge>
-                      </div>
-                      <div className="space-y-1">
-                        {item.campaign && (
-                          <p className="text-xs text-gray-600">{item.campaign}</p>
-                        )}
-                        {item.creator && (
-                          <p className="text-xs text-gray-600">{item.creator}</p>
-                        )}
-                        <div className="flex items-center justify-between">
-                          <p className="text-xs text-gray-500">
-                            {new Date(item.time).toLocaleTimeString('en-US', {
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
-                          </p>
-                          <Badge variant="outline" className={`text-xs ${getPriorityColor(item.priority)}`}>
-                            {item.priority}
-                          </Badge>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Empty state */}
+        {/* Empty state for when there are no items at all */}
         {scheduleItems.length === 0 && (
           <div className="text-center py-6">
             <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-            <p className="text-sm text-gray-600">No upcoming schedule</p>
+            <p className="text-sm text-gray-600">No upcoming events in the next 7 days</p>
           </div>
         )}
 

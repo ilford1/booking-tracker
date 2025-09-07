@@ -59,7 +59,7 @@ export function CreatorDialog({ trigger, creator, onSuccess }: CreatorDialogProp
         <CreatorForm
           initialData={creator ? {
             name: creator.name,
-            email: creator.email || '',
+            address: creator.address || '',
             platforms: (creator.platforms as ("instagram" | "tiktok" | "facebook" | "other")[]) || 
                       (creator.platform ? [creator.platform] as ("instagram" | "tiktok" | "facebook" | "other")[] : ['instagram']),
             handle: creator.handle || '',

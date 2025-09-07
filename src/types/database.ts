@@ -5,7 +5,7 @@ export type Creator = {
   handle?: string | null
   platform?: 'instagram' | 'tiktok' | 'facebook' | 'other' | null
   platforms?: string[] | null
-  email?: string | null
+  address?: string | null
   phone?: string | null
   bank_account?: Record<string, string> | null
   followers?: number | null
@@ -38,11 +38,29 @@ export type Campaign = {
 
 export type BookingStatus = 
   | 'pending'
-  | 'in_process'
+  | 'deal'
+  | 'delivered'
   | 'content_submitted'
   | 'approved'
   | 'completed'
-  | 'canceled'
+
+export type UserProfile = {
+  id: string
+  user_role: 'customer' | 'service_provider' | 'business_admin' | 'super_admin'
+  business_id?: string | null
+  provider_id?: string | null
+  first_name?: string | null
+  last_name?: string | null
+  phone?: string | null
+  avatar_url?: string | null
+  preferences?: Record<string, any> | null
+  onboarded: boolean
+  created_at: string
+  updated_at: string
+  // Computed fields
+  full_name?: string
+  email?: string
+}
 
 export type Booking = {
   id: string
@@ -57,52 +75,20 @@ export type Booking = {
   contact_channel?: 'instagram' | 'tiktok' | 'email' | 'zalo' | 'phone' | 'other' | null
   utm_code?: string | null
   affiliate_code?: string | null
+  tracking_number?: string | null
+  scheduled_date?: string | null
+  deadline?: string | null
+  delivered_at?: string | null
+  actor: string // The user who created/owns this booking
   created_at: string
   updated_at: string
   // Relations
   campaign?: Campaign
   creator?: Creator
+  created_by?: UserProfile // User who created the booking
 }
 
-export type DeliverableType = 
-  | 'post' 
-  | 'reel' 
-  | 'story' 
-  | 'live' 
-  | 'video' 
-  | 'tiktok' 
-  | 'short' 
-  | 'carousel' 
-  | 'album' 
-  | 'other'
-
-export type DeliverableStatus = 
-  | 'planned' 
-  | 'due' 
-  | 'submitted' 
-  | 'revision' 
-  | 'approved' 
-  | 'scheduled' 
-  | 'posted'
-
-export type Deliverable = {
-  id: string
-  booking_id?: string | null
-  type: DeliverableType
-  title?: string | null
-  caption?: string | null
-  due_date?: string | null
-  publish_date?: string | null
-  status: DeliverableStatus
-  link?: string | null
-  draft_url?: string | null
-  notes?: string | null
-  actor: string
-  created_at: string
-  updated_at: string
-  // Relations
-  booking?: Booking
-}
+// Deliverable types removed - simplified to booking-only workflow
 
 export type PaymentStatus = 
   | 'unconfirmed' 
@@ -159,7 +145,7 @@ export type Sendout = {
 
 export type Metrics = {
   id: string
-  deliverable_id?: string | null
+  booking_id?: string | null
   views?: number | null
   likes?: number | null
   comments?: number | null
@@ -168,7 +154,7 @@ export type Metrics = {
   sales?: number | null
   captured_at: string
   // Relations
-  deliverable?: Deliverable
+  booking?: Booking
 }
 
 export type FileScope = 
@@ -203,8 +189,7 @@ export type UpdateCampaignData = Partial<CreateCampaignData>
 export type CreateBookingData = Omit<Booking, 'id' | 'created_at' | 'updated_at' | 'actor' | 'campaign' | 'creator'>
 export type UpdateBookingData = Partial<CreateBookingData>
 
-export type CreateDeliverableData = Omit<Deliverable, 'id' | 'created_at' | 'updated_at' | 'actor' | 'booking'>
-export type UpdateDeliverableData = Partial<CreateDeliverableData>
+// Deliverable form types removed
 
 export type CreatePaymentData = Omit<Payment, 'id' | 'created_at' | 'updated_at' | 'actor' | 'booking'>
 export type UpdatePaymentData = Partial<CreatePaymentData>
