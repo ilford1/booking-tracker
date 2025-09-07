@@ -235,7 +235,7 @@ export function CalendarWidget({ className, campaignFilter }: CalendarWidgetProp
             campaigns: calendarEvents.filter(e => e.type === 'campaign').length
           }
         },
-        eventsByDay: calendarEvents.reduce((acc, e) => {
+        eventsByDay: calendarEvents.reduce((acc: Record<string, string[]>, e) => {
           const key = `Day ${e.date}`
           if (!acc[key]) acc[key] = []
           acc[key].push(`${e.type}: ${e.title}`)
