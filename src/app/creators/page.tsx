@@ -25,12 +25,14 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
 import { getCreators, deleteCreator } from '@/lib/actions/creators'
+import { getBookings } from '@/lib/actions/bookings'
 import { formatCurrency } from '@/lib/utils'
-import type { Creator } from '@/types'
+import type { Creator, Booking } from '@/types'
 import { CreatorDialog } from '@/components/dialogs/creator-dialog'
 import { BookingDialog } from '@/components/dialogs/booking-dialog'
 import { DetailsDialog } from '@/components/dialogs/details-dialog'
 import { SearchInput } from '@/components/search-input'
+import { CampaignFilter } from '@/components/campaign-filter'
 import { toast } from 'sonner'
 import { 
   Plus, 
@@ -48,20 +50,26 @@ import {
 
 export default function CreatorsPage() {
   const [creators, setCreators] = useState<Creator[]>([])
+  const [bookings, setBookings] = useState<Booking[]>([])
   const [filteredCreators, setFilteredCreators] = useState<Creator[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshKey, setRefreshKey] = useState(0)
   const [searchQuery, setSearchQuery] = useState('')
   const [platformFilter, setPlatformFilter] = useState('')
-  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid')
+  const [campaignFilter, setCampaignFilter] = useState<string | null>(null)
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('table')
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true)
-        const creatorsData = await getCreators()
+        const [creatorsData, bookingsData] = await Promise.all([
+          getCreators(),
+          getBookings()
+        ])
         setCreators(creatorsData)
+        setBookings(bookingsData)
         setFilteredCreators(creatorsData)
       } catch (error) {
         console.error('Error fetching creators:', error)
@@ -73,7 +81,7 @@ export default function CreatorsPage() {
     fetchData()
   }, [refreshKey])
 
-  // Filter creators based on search and platform
+  // Filter creators based on search, platform, and campaign
   useEffect(() => {
     let filtered = creators
     
@@ -91,8 +99,18 @@ export default function CreatorsPage() {
       filtered = filtered.filter(creator => creator.platform === platformFilter)
     }
     
+    // Apply campaign filter - show only creators with bookings in the selected campaign
+    if (campaignFilter) {
+      const creatorIdsInCampaign = bookings
+        .filter(booking => booking.campaign_id === campaignFilter)
+        .map(booking => booking.creator_id)
+        .filter(Boolean)
+      
+      filtered = filtered.filter(creator => creatorIdsInCampaign.includes(creator.id))
+    }
+    
     setFilteredCreators(filtered)
-  }, [creators, searchQuery, platformFilter])
+  }, [creators, bookings, searchQuery, platformFilter, campaignFilter])
 
   const handleCreatorSuccess = () => {
     setRefreshKey(prev => prev + 1)
@@ -178,7 +196,7 @@ export default function CreatorsPage() {
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Creators</h1>
               <p className="text-gray-500 mt-1">
-                Manage your KOL/KOC directory and their information
+                KOL/KOC management
               </p>
             </div>
             <div className="flex gap-2">
@@ -188,6 +206,13 @@ export default function CreatorsPage() {
                 placeholder="Search creators..."
                 className="w-64"
               />
+              
+              <CampaignFilter
+                value={campaignFilter}
+                onChange={setCampaignFilter}
+                placeholder="All Campaigns"
+              />
+              
               <select 
                 className="px-3 py-2 border border-input bg-background rounded-md text-sm"
                 value={platformFilter}
@@ -382,6 +407,15 @@ export default function CreatorsPage() {
                             trigger={
                               <Button variant="outline" size="sm">
                                 View
+                              </Button>
+                            }
+                          />
+                          <CreatorDialog
+                            creator={creator}
+                            onSuccess={handleCreatorSuccess}
+                            trigger={
+                              <Button variant="outline" size="sm">
+                                <Edit className="h-4 w-4" />
                               </Button>
                             }
                           />

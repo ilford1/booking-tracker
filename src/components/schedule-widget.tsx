@@ -5,20 +5,19 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { formatDate, formatDateTime } from '@/lib/utils'
-import Link from 'next/link'
+import { createClient } from '@/utils/supabase/client'
 import { 
   Calendar, 
   Clock, 
   CheckCircle2, 
   AlertTriangle,
-  ArrowRight,
-  Plus
+  Megaphone,
+  DollarSign
 } from 'lucide-react'
 
-// Mock schedule data - in real app, this would come from API
 interface ScheduleItem {
   id: string
-  type: 'post' | 'deadline' | 'payment' | 'meeting'
+  type: 'booking' | 'campaign' | 'payment' | 'deadline'
   title: string
   campaign?: string
   creator?: string
@@ -27,69 +26,18 @@ interface ScheduleItem {
   priority: 'high' | 'medium' | 'low'
 }
 
-const mockScheduleItems: ScheduleItem[] = [
-  {
-    id: '1',
-    type: 'post',
-    title: 'Instagram Story - Fashion Collection',
-    campaign: 'Summer 2024 Launch',
-    creator: '@fashionista_vn',
-    time: '2024-01-15T10:00:00',
-    status: 'upcoming',
-    priority: 'high'
-  },
-  {
-    id: '2',
-    type: 'deadline',
-    title: 'Content Review Due',
-    campaign: 'Beauty Brand Collab',
-    creator: '@makeup_artist',
-    time: '2024-01-15T14:30:00',
-    status: 'upcoming',
-    priority: 'medium'
-  },
-  {
-    id: '3',
-    type: 'payment',
-    title: 'Payment Processing',
-    creator: '@lifestyle_blogger',
-    time: '2024-01-15T16:00:00',
-    status: 'overdue',
-    priority: 'high'
-  },
-  {
-    id: '4',
-    type: 'meeting',
-    title: 'Campaign Strategy Meeting',
-    campaign: 'Q1 KOL Planning',
-    time: '2024-01-16T09:00:00',
-    status: 'upcoming',
-    priority: 'medium'
-  },
-  {
-    id: '5',
-    type: 'post',
-    title: 'TikTok Video - Product Demo',
-    campaign: 'Tech Product Launch',
-    creator: '@tech_reviewer',
-    time: '2024-01-16T15:00:00',
-    status: 'completed',
-    priority: 'medium'
-  }
-]
-
 function getTypeIcon(type: string) {
   switch (type) {
-    case 'post':
+    case 'booking':
       return Calendar
+    case 'campaign':
+      return Megaphone
+    case 'payment':
+      return DollarSign
     case 'deadline':
       return Clock
-    case 'payment':
-      return CheckCircle2
-    case 'meeting':
-      return AlertTriangle
     default:
-      return Clock
+      return Calendar
   }
 }
 
@@ -121,33 +69,190 @@ function getPriorityColor(priority: string) {
 
 interface ScheduleWidgetProps {
   className?: string
+  campaignFilter?: string | null
 }
 
-export function ScheduleWidget({ className }: ScheduleWidgetProps) {
+export function ScheduleWidget({ className, campaignFilter }: ScheduleWidgetProps) {
   const [scheduleItems, setScheduleItems] = useState<ScheduleItem[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Simulate API call
     const loadSchedule = async () => {
-      // In real app, this would be an API call
-      await new Promise(resolve => setTimeout(resolve, 500))
-      
-      // Sort by time and filter for next 48 hours
-      const now = new Date()
-      const next48Hours = new Date(now.getTime() + 48 * 60 * 60 * 1000)
-      
-      const filteredItems = mockScheduleItems
-        .filter(item => new Date(item.time) <= next48Hours)
-        .sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime())
-        .slice(0, 5) // Show only next 5 items
-      
-      setScheduleItems(filteredItems)
-      setLoading(false)
+      try {
+        setLoading(true)
+        const supabase = createClient()
+        
+        // Get recent bookings (last 30 days) and upcoming items
+        const now = new Date()
+        const past30Days = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+        const next7Days = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
+        
+        // Fetch recent bookings with campaign and creator relations
+        let bookingsQuery = supabase.from('bookings')
+          .select(`
+            *,
+            campaign:campaigns(id, name),
+            creator:creators(id, name, handle)
+          `)
+          .gte('created_at', past30Days.toISOString())
+          .neq('status', 'canceled')
+        
+        // Apply campaign filter if provided
+        if (campaignFilter) {
+          bookingsQuery = bookingsQuery.eq('campaign_id', campaignFilter)
+        }
+        
+        const { data: bookings, error: bookingsError } = await bookingsQuery
+          .order('created_at', { ascending: false })
+          .limit(20)
+        
+        if (bookingsError) {
+          // Don't log errors for missing tables or connection issues
+          if (bookingsError.code !== 'PGRST204' && !bookingsError.message?.includes('relation') && !bookingsError.message?.includes('does not exist')) {
+            console.warn('Schedule: Unable to fetch bookings', bookingsError.code)
+          }
+        }
+        
+        // Fetch campaigns with start dates in the next 7 days (or recent ones)
+        let campaignsQuery = supabase.from('campaigns').select('*')
+          .or(`start_date.gte.${now.toISOString().split('T')[0]},start_date.is.null`)
+        
+        // Apply campaign filter if provided
+        if (campaignFilter) {
+          campaignsQuery = campaignsQuery.eq('id', campaignFilter)
+        }
+        
+        const { data: campaigns, error: campaignsError } = await campaignsQuery
+          .order('start_date', { ascending: true })
+          .limit(10)
+        
+        if (campaignsError) {
+          // Don't log errors for missing tables or connection issues
+          if (campaignsError.code !== 'PGRST204' && !campaignsError.message?.includes('relation') && !campaignsError.message?.includes('does not exist')) {
+            console.warn('Schedule: Unable to fetch campaigns', campaignsError.code)
+          }
+        }
+        
+        // Transform data into schedule items
+        const items: ScheduleItem[] = []
+        
+        // Add bookings
+        if (bookings) {
+          bookings.forEach((booking: any) => {
+            // Determine booking status
+            const isCompleted = booking.status === 'completed'
+            const isOverdue = ['pending', 'in_process'].includes(booking.status) && 
+                              new Date(booking.created_at).getTime() < (now.getTime() - 7 * 24 * 60 * 60 * 1000)
+            
+            // Determine priority based on agreed_amount or offer_amount
+            const amount = booking.agreed_amount || booking.offer_amount || 0
+            let priority: 'high' | 'medium' | 'low' = 'low'
+            if (amount > 5000000) priority = 'high'
+            else if (amount > 1000000) priority = 'medium'
+            
+            items.push({
+              id: booking.id,
+              type: 'booking',
+              title: booking.campaign?.name || booking.brief || 'New Booking',
+              campaign: booking.campaign?.name || undefined,
+              creator: booking.creator?.name || booking.creator?.handle || undefined,
+              time: booking.created_at,
+              status: isCompleted ? 'completed' : isOverdue ? 'overdue' : 'upcoming',
+              priority
+            })
+            
+            // Add payment deadline for approved bookings
+            if (booking.status === 'approved' || booking.status === 'completed') {
+              const paymentDate = new Date(booking.updated_at)
+              paymentDate.setDate(paymentDate.getDate() + 7) // 7 days after approval
+              
+              if (paymentDate <= next7Days) {
+                const isPaymentOverdue = paymentDate < now && booking.status !== 'completed'
+                
+                items.push({
+                  id: `${booking.id}-payment`,
+                  type: 'payment',
+                  title: `Payment Due: ${booking.campaign?.name || 'Booking'}`,
+                  campaign: booking.campaign?.name || undefined,
+                  creator: booking.creator?.name || booking.creator?.handle || undefined,
+                  time: paymentDate.toISOString(),
+                  status: booking.status === 'completed' ? 'completed' : isPaymentOverdue ? 'overdue' : 'upcoming',
+                  priority
+                })
+              }
+            }
+          })
+        }
+        
+        // Add campaigns
+        if (campaigns) {
+          campaigns.forEach((campaign: any) => {
+            // Use start_date if available, otherwise created_at
+            const campaignDate = campaign.start_date ? new Date(campaign.start_date) : new Date(campaign.created_at)
+            const isOverdue = campaign.start_date && campaignDate < now
+            const isUpcoming = !campaign.start_date || campaignDate >= now
+            
+            // Determine priority based on budget
+            const budget = campaign.budget || 0
+            let priority: 'high' | 'medium' | 'low' = 'low'
+            if (budget > 10000000) priority = 'high'
+            else if (budget > 5000000) priority = 'medium'
+            
+            items.push({
+              id: campaign.id,
+              type: 'campaign',
+              title: campaign.name,
+              campaign: campaign.name,
+              time: campaign.start_date || campaign.created_at,
+              status: isOverdue ? 'overdue' : 'upcoming',
+              priority
+            })
+          })
+        }
+        
+        // Filter items to show relevant ones (today, tomorrow, or recent)
+        const relevantItems = items.filter(item => {
+          const itemDate = new Date(item.time)
+          const daysDiff = Math.ceil((itemDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+          // Show items from 7 days ago to 7 days in the future
+          return daysDiff >= -7 && daysDiff <= 7
+        })
+        
+        // Sort by time (upcoming first, then recent)
+        const sortedItems = relevantItems
+          .sort((a, b) => {
+            const aTime = new Date(a.time).getTime()
+            const bTime = new Date(b.time).getTime()
+            const nowTime = now.getTime()
+            
+            // Upcoming items first (sorted by time)
+            if (aTime >= nowTime && bTime >= nowTime) {
+              return aTime - bTime
+            }
+            // Past items second (most recent first)
+            if (aTime < nowTime && bTime < nowTime) {
+              return bTime - aTime
+            }
+            // Upcoming items come before past items
+            return aTime >= nowTime ? -1 : 1
+          })
+          .slice(0, 8) // Show up to 8 items
+        
+        setScheduleItems(sortedItems)
+      } catch (error) {
+        console.error('Error loading schedule:', error)
+        setScheduleItems([])
+      } finally {
+        setLoading(false)
+      }
     }
 
     loadSchedule()
-  }, [])
+    
+    // Refresh every 4 hours
+    const interval = setInterval(loadSchedule, 4 * 60 * 60 * 1000)
+    return () => clearInterval(interval)
+  }, [campaignFilter])
 
   const todayItems = scheduleItems.filter(item => {
     const today = new Date()
@@ -160,6 +265,23 @@ export function ScheduleWidget({ className }: ScheduleWidgetProps) {
     tomorrow.setDate(tomorrow.getDate() + 1)
     const itemDate = new Date(item.time)
     return itemDate.toDateString() === tomorrow.toDateString()
+  })
+  
+  const recentItems = scheduleItems.filter(item => {
+    const today = new Date()
+    const tomorrow = new Date()
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    const itemDate = new Date(item.time)
+    return itemDate.toDateString() !== today.toDateString() && 
+           itemDate.toDateString() !== tomorrow.toDateString() &&
+           itemDate.getTime() < tomorrow.getTime()
+  })
+  
+  const upcomingItems = scheduleItems.filter(item => {
+    const tomorrow = new Date()
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    const itemDate = new Date(item.time)
+    return itemDate.getTime() > tomorrow.getTime()
   })
 
   if (loading) {
@@ -188,18 +310,10 @@ export function ScheduleWidget({ className }: ScheduleWidgetProps) {
   return (
     <Card className={className}>
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            Schedule
-          </CardTitle>
-          <Button variant="outline" size="sm" asChild>
-            <Link href="/calendar">
-              <Plus className="h-4 w-4 mr-1" />
-              Add
-            </Link>
-          </Button>
-        </div>
+        <CardTitle className="flex items-center gap-2">
+          <Calendar className="h-5 w-5" />
+          Schedule
+        </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Today */}
@@ -298,27 +412,10 @@ export function ScheduleWidget({ className }: ScheduleWidgetProps) {
         {scheduleItems.length === 0 && (
           <div className="text-center py-6">
             <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-            <p className="text-sm text-gray-600 mb-2">No upcoming schedule</p>
-            <Button variant="outline" size="sm" asChild>
-              <Link href="/calendar">
-                View Calendar
-                <ArrowRight className="h-4 w-4 ml-1" />
-              </Link>
-            </Button>
+            <p className="text-sm text-gray-600">No upcoming schedule</p>
           </div>
         )}
 
-        {/* View all link */}
-        {scheduleItems.length > 0 && (
-          <div className="pt-2 border-t">
-            <Button variant="ghost" size="sm" className="w-full" asChild>
-              <Link href="/calendar">
-                View Full Calendar
-                <ArrowRight className="h-4 w-4 ml-1" />
-              </Link>
-            </Button>
-          </div>
-        )}
       </CardContent>
     </Card>
   )

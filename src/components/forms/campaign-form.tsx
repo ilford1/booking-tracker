@@ -154,7 +154,7 @@ export function CampaignForm({ onSuccess, onCancel, initialData }: CampaignFormP
               await createBooking({
                 campaign_id: createdCampaign.id,
                 creator_id: creatorId,
-                status: 'prospect',
+                status: 'pending',
                 currency: 'VND'
               })
             } catch (error) {

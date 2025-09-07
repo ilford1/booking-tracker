@@ -188,11 +188,11 @@ export function DetailsDialog({ trigger, data, type }: DetailsDialogProps) {
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <div className="text-sm font-medium text-gray-600">Start Date</div>
-                        <div className="text-sm">{campaign.start_date ? formatDate(campaign.start_date) : 'Not set'}</div>
+                        <div className="text-sm">{campaign.start_date ? formatDate(new Date(campaign.start_date)) : 'Not set'}</div>
                       </div>
                       <div>
                         <div className="text-sm font-medium text-gray-600">End Date</div>
-                        <div className="text-sm">{campaign.end_date ? formatDate(campaign.end_date) : 'Not set'}</div>
+                        <div className="text-sm">{campaign.end_date ? formatDate(new Date(campaign.end_date)) : 'Not set'}</div>
                       </div>
                     </div>
                   )}
@@ -210,9 +210,9 @@ export function DetailsDialog({ trigger, data, type }: DetailsDialogProps) {
                   {/* Metadata */}
                   <div className="pt-4 border-t">
                     <div className="text-xs text-gray-500">
-                      Created {formatDate(campaign.created_at)}
+                      Created {formatDate(new Date(campaign.created_at))}
                       {campaign.updated_at !== campaign.created_at && (
-                        <> • Updated {formatDate(campaign.updated_at)}</>
+                        <> • Updated {formatDate(new Date(campaign.updated_at))}</>
                       )}
                     </div>
                   </div>

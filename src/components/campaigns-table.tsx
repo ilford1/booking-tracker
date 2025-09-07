@@ -26,6 +26,7 @@ import { formatCurrency, formatDate } from '@/lib/utils'
 import type { Campaign } from '@/types'
 import { DetailsDialog } from '@/components/dialogs/details-dialog'
 import { BookingDialog } from '@/components/dialogs/booking-dialog'
+import { BulkCreatorDialog } from '@/components/dialogs/bulk-creator-dialog'
 import { 
   ArrowUpDown, 
   ArrowUp, 
@@ -34,7 +35,8 @@ import {
   DollarSign,
   Trash2,
   Eye,
-  Plus
+  Plus,
+  Users
 } from 'lucide-react'
 
 type SortField = 'name' | 'budget' | 'start_date' | 'end_date' | 'created_at'
@@ -240,7 +242,7 @@ export function CampaignsTable({ campaigns, onDelete, onSuccess, deletingId }: C
                     <div className="flex items-center gap-1">
                       <Calendar className="h-4 w-4 text-gray-500" />
                       <span className="text-sm">
-                        {formatDate(campaign.start_date)}
+                        {formatDate(new Date(campaign.start_date))}
                       </span>
                     </div>
                   ) : (
@@ -253,7 +255,7 @@ export function CampaignsTable({ campaigns, onDelete, onSuccess, deletingId }: C
                     <div className="flex items-center gap-1">
                       <Calendar className="h-4 w-4 text-gray-500" />
                       <span className="text-sm">
-                        {formatDate(campaign.end_date)}
+                        {formatDate(new Date(campaign.end_date))}
                       </span>
                     </div>
                   ) : (
@@ -263,7 +265,7 @@ export function CampaignsTable({ campaigns, onDelete, onSuccess, deletingId }: C
                 
                 <TableCell>
                   <span className="text-sm text-gray-600">
-                    {formatDate(campaign.created_at)}
+                    {formatDate(new Date(campaign.created_at))}
                   </span>
                 </TableCell>
                 
@@ -284,6 +286,16 @@ export function CampaignsTable({ campaigns, onDelete, onSuccess, deletingId }: C
                       trigger={
                         <Button variant="ghost" size="sm" className="p-2">
                           <Plus className="h-4 w-4" />
+                        </Button>
+                      }
+                    />
+                    <BulkCreatorDialog
+                      campaignId={campaign.id}
+                      campaignName={campaign.name}
+                      onSuccess={onSuccess}
+                      trigger={
+                        <Button variant="ghost" size="sm" className="p-2">
+                          <Users className="h-4 w-4" />
                         </Button>
                       }
                     />

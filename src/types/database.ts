@@ -37,17 +37,12 @@ export type Campaign = {
 }
 
 export type BookingStatus = 
-  | 'prospect' 
-  | 'outreaching' 
-  | 'negotiating' 
-  | 'booked' 
-  | 'content_due' 
-  | 'submitted' 
-  | 'approved' 
-  | 'posted' 
-  | 'reported' 
-  | 'paid' 
-  | 'archived'
+  | 'pending'
+  | 'in_process'
+  | 'content_submitted'
+  | 'approved'
+  | 'completed'
+  | 'canceled'
 
 export type Booking = {
   id: string
@@ -62,7 +57,6 @@ export type Booking = {
   contact_channel?: 'instagram' | 'tiktok' | 'email' | 'zalo' | 'phone' | 'other' | null
   utm_code?: string | null
   affiliate_code?: string | null
-  actor: string
   created_at: string
   updated_at: string
   // Relations

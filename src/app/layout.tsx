@@ -4,12 +4,13 @@ import './globals.css'
 import { Toaster } from 'sonner'
 import { AuthProvider } from '@/lib/auth-context'
 import { NotificationsProvider } from '@/lib/notifications-context'
+import { SpeedInsights } from '@vercel/speed-insights/next'
 
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'KOL Booking Tracker',
-  description: 'Comprehensive KOL/KOC booking and campaign management system',
+  title: 'VA collective',
+  description: 'Comprehensive creator booking and campaign management system',
 }
 
 export default function RootLayout({
@@ -28,6 +29,7 @@ export default function RootLayout({
             <Toaster richColors position="top-right" />
           </NotificationsProvider>
         </AuthProvider>
+        <SpeedInsights />
       </body>
     </html>
   )

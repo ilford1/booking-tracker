@@ -338,12 +338,12 @@ export default function CampaignsPage() {
                       <span className="text-sm text-gray-600">
                         {campaign.start_date && campaign.end_date ? (
                           <>
-                            {formatDate(campaign.start_date)} - {formatDate(campaign.end_date)}
+                            {formatDate(new Date(campaign.start_date))} - {formatDate(new Date(campaign.end_date))}
                           </>
                         ) : campaign.start_date ? (
-                          <>Starts {formatDate(campaign.start_date)}</>
+                          <>Starts {formatDate(new Date(campaign.start_date))}</>
                         ) : campaign.end_date ? (
-                          <>Ends {formatDate(campaign.end_date)}</>
+                          <>Ends {formatDate(new Date(campaign.end_date))}</>
                         ) : (
                           'No timeline set'
                         )}
@@ -367,7 +367,7 @@ export default function CampaignsPage() {
 
                     {/* Metadata */}
                     <div className="text-xs text-gray-500 mb-4">
-                      Created {formatDate(campaign.created_at)}
+                      Created {formatDate(new Date(campaign.created_at))}
                       {campaign.slug && (
                         <> • Slug: {campaign.slug}</>
                       )}
